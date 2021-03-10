@@ -22,63 +22,64 @@ class SkipNodeTest {
     static int STARTING_PORT = 8080;
     static int NODES = 16;
 
-    // In this test I call the increment a lot of times through different threads
-    // This tests whether all messages are in face received or not
-    // @Test
-//    void concurrentIncrements() {
-//        // First, construct the underlays.
-//        List<Underlay> underlays = new ArrayList<>(NODES);
-//        for(int i = 0; i < NODES; i++) {
-//            Underlay underlay = Underlay.newDefaultUnderlay();
-//            underlay.initialize(STARTING_PORT + i);
-//            underlays.add(underlay);
-//        }
-//        // Then, construct the local skip graph without manually constructing the lookup tables.
-//        LocalSkipGraph g = new LocalSkipGraph(NODES, underlays.get(0).getAddress(), STARTING_PORT, false);
-//        // Create the middle layers.
-//        for(int i = 0; i < NODES; i++) {
-//            MiddleLayer middleLayer = new MiddleLayer(underlays.get(i), g.getNodes().get(i));
-//            // Assign the middle layer to the underlay & overlay.
-//            underlays.get(i).setMiddleLayer(middleLayer);
-//            g.getNodes().get(i).setMiddleLayer(middleLayer);
-//        }
-////        // We expect the lookup tables to converge to a correct state after SEARCH_THRESHOLD many searches.
-////        for(int k = 0; k < SEARCH_THRESHOLD; k++) {
-////            final SkipNode initiator = g.getNodes().get((int)(Math.random() * NODES));
-////            final SkipNode target = g.getNodes().get((int)(Math.random() * NODES));
-////            initiator.searchByNameID(target.getNameID());
-////        }
-//        // Construct the search threads.
-//        Thread[] searchThreads = new Thread[SEARCH_THREADS];
-//        final SkipNode target = g.getNodes().get((int)(Math.random() * NODES));
-//        for(int i = 0; i < searchThreads.length; i++) {
-//            // Choose two random nodes.
+     /*In this test I call the increment a lot of times through different threads
+     This tests whether all messages are in face received or not*/
+/*     @Test
+    void concurrentIncrements() {
+        // First, construct the underlays.
+        List<Underlay> underlays = new ArrayList<>(NODES);
+        for(int i = 0; i < NODES; i++) {
+            Underlay underlay = Underlay.newDefaultUnderlay();
+            underlay.initialize(STARTING_PORT + i);
+            underlays.add(underlay);
+        }
+        // Then, construct the local skip graph without manually constructing the lookup tables.
+        LocalSkipGraph g = new LocalSkipGraph(NODES, underlays.get(0).getAddress(), STARTING_PORT, false);
+        // Create the middle layers.
+        for(int i = 0; i < NODES; i++) {
+            MiddleLayer middleLayer = new MiddleLayer(underlays.get(i), g.getNodes().get(i));
+            // Assign the middle layer to the underlay & overlay.
+            underlays.get(i).setMiddleLayer(middleLayer);
+            g.getNodes().get(i).setMiddleLayer(middleLayer);
+        }
+//        // We expect the lookup tables to converge to a correct state after SEARCH_THRESHOLD many searches.
+//        for(int k = 0; k < SEARCH_THRESHOLD; k++) {
 //            final SkipNode initiator = g.getNodes().get((int)(Math.random() * NODES));
-//            searchThreads[i] = new Thread(() -> {
-////                SearchResult res = initiator.searchByNameID(target.getNameID());
-//                initiator.increment(target.getIdentity(), 0);
-//                initiator.increment(target.getIdentity(), 0);
-////                Assertions.assertEquals(target.getNameID(), res.result.getNameID());
-//            });
+//            final SkipNode target = g.getNodes().get((int)(Math.random() * NODES));
+//            initiator.searchByNameID(target.getNameID());
 //        }
-//        // Start the search threads.
-//        for(Thread t : searchThreads) t.start();
-//        // Complete the threads.
-//        try {
-//            for(Thread t : searchThreads) t.join();
-//        } catch(InterruptedException e) {
-//            System.err.println("Could not join the thread.");
-//            e.printStackTrace();
-//        }
-//        int sum = 0;
-//        // One should be 2 * NUMTHREADS, rest should be 0
-//        for (SkipNode node : g.getNodes()){
-//            System.out.println(node.i);
-//            sum+=node.i.get();
-//        }
-//        // This should be 2 * NUMTHREADS
-//        System.out.println(sum);
-//    }
+        // Construct the search threads.
+        int SEARCH_THREADS = 1;
+        Thread[] searchThreads = new Thread[SEARCH_THREADS];
+        final SkipNode target = g.getNodes().get((int)(Math.random() * NODES));
+        for(int i = 0; i < searchThreads.length; i++) {
+            // Choose two random nodes.
+            final SkipNode initiator = g.getNodes().get((int)(Math.random() * NODES));
+            searchThreads[i] = new Thread(() -> {
+//                SearchResult res = initiator.searchByNameID(target.getNameID());
+                initiator.increment(target.getIdentity(), 0);
+                initiator.increment(target.getIdentity(), 0);
+//                Assertions.assertEquals(target.getNameID(), res.result.getNameID());
+            });
+        }
+        // Start the search threads.
+        for(Thread t : searchThreads) t.start();
+        // Complete the threads.
+        try {
+            for(Thread t : searchThreads) t.join();
+        } catch(InterruptedException e) {
+            System.err.println("Could not join the thread.");
+            e.printStackTrace();
+        }
+        int sum = 0;
+        // One should be 2 * NUMTHREADS, rest should be 0
+        for (SkipNode node : g.getNodes()){
+            System.out.println(node.i);
+            sum+=node.i.get();
+        }
+        // This should be 2 * NUMTHREADS
+        System.out.println(sum);
+    }*/
 
 
     @Test

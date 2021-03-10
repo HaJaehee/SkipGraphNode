@@ -16,6 +16,14 @@ parameters are:
 After the configuration file is ready, the skip graph node can be run by running the executable
 provided with the project.
 
+## A parser for `config.yaml` is not implemented.
+
+You have to implement a parser. The parser must create and have objects, such as Underlay, SkipNodeInterface, SkipNodeIdentity, and LookupTable (which is created by using LookupTableFactory). Then, the parser's attributes can be used to create objects, such as MiddleLayer and SkipNode. 
+
+## The SkipNodeTest class is used only to test this implementation locally.
+
+There are many useful example codes.
+
 # How to Interact with Skip Graph Node
 
 After setting up a Skip Graph process in the network and having it running, the user can

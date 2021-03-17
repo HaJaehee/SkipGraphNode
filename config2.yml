@@ -1,0 +1,9 @@
+underlay: udp
+port: 1199
+introducer_address: 192.168.0.4
+introducer_port: 1099
+name_id_assignment_protocol: none
+name_id_value_self_assigned: 1101
+numerical_id_assignment_protocol: none
+numerical_id_value_self_assigned: 2345
+storage_path: none

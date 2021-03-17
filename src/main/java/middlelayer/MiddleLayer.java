@@ -9,6 +9,7 @@ import underlay.packets.*;
 import underlay.packets.requests.*;
 import underlay.packets.responses.*;
 
+import java.math.BigInteger;
 import java.util.List;
 
 /**
@@ -160,7 +161,7 @@ public class MiddleLayer {
         return ((SearchResultResponse) response).result;
     }
 
-    public SkipNodeIdentity searchByNumID(String destinationAddress, int port, int numID) {
+    public SkipNodeIdentity searchByNumID(String destinationAddress, int port, BigInteger numID) {
         // Send the request through the underlay
         Response response = this.send(destinationAddress, port, new SearchByNumIDRequest(numID));
         return ((IdentityResponse) response).identity;

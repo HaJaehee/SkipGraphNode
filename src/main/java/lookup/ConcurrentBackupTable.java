@@ -1,8 +1,11 @@
 package lookup;
 import skipnode.SkipNodeIdentity;
 
-import java.util.*;
-import java.util.concurrent.TimeUnit;
+import java.math.BigInteger;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.List;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.stream.Collectors;
@@ -210,7 +213,7 @@ public class ConcurrentBackupTable implements LookupTable {
      * @return the list of neighbors (both right and left) of the newly inserted node.
      */
     @Override
-    public TentativeTable acquireNeighbors(SkipNodeIdentity owner, int newNumID, String newNameID, int level) {
+    public TentativeTable acquireNeighbors(SkipNodeIdentity owner, BigInteger newNumID, String newNameID, int level) {
         lock.readLock().lock();
         // We will return an unsorted list of level-lists.
         List<List<SkipNodeIdentity>> newTable = new ArrayList<>(numLevels);
@@ -241,10 +244,10 @@ public class ConcurrentBackupTable implements LookupTable {
         // Insert every neighbor at the correct level & direction.
         for(int l = 0; l < tentativeTable.neighbors.size(); l++) {
             List<SkipNodeIdentity> leftList = tentativeTable.neighbors.get(l).stream()
-                    .filter(x -> x.getNumID() <= owner.getNumID())
+                    .filter(x -> (x.getNumID().compareTo(owner.getNumID()) == -1 || x.getNumID().compareTo(owner.getNumID()) == 0)) //x.getNumID() <= owner.getNumID()
                     .collect(Collectors.toList());
             List<SkipNodeIdentity> rightList = tentativeTable.neighbors.get(l).stream()
-                    .filter(x -> x.getNumID() > owner.getNumID())
+                    .filter(x -> x.getNumID().compareTo(owner.getNumID()) == 1)  //x.getNumID() > owner.getNumID()
                     .collect(Collectors.toList());
             for(int j = 0; j <= l; j++) {
                 int lIndex = getIndex(direction.LEFT, j);

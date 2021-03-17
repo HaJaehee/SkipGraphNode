@@ -1,19 +1,20 @@
 package skipnode;
 
 import java.io.Serializable;
+import java.math.BigInteger;
 import java.util.Objects;
 
 // Basic skipnode.SkipNodeIdentity class
 public class SkipNodeIdentity implements Serializable, Comparable<SkipNodeIdentity> {
     private final String nameID;
-    private final int numID;
+    private final BigInteger numID;
     private final String address;
     private final int port;
 
     // Denotes the lookup table version.
     public int version;
 
-    public SkipNodeIdentity(String nameID, int numID, String address, int port, int version) {
+    public SkipNodeIdentity(String nameID, BigInteger numID, String address, int port, int version) {
         this.nameID = nameID;
         this.numID = numID;
         this.address = address;
@@ -21,7 +22,7 @@ public class SkipNodeIdentity implements Serializable, Comparable<SkipNodeIdenti
         this.version = version;
     }
 
-    public SkipNodeIdentity(String nameID, int numID, String address, int port) {
+    public SkipNodeIdentity(String nameID, BigInteger numID, String address, int port) {
         this(nameID, numID, address, port, 0);
     }
 
@@ -29,7 +30,7 @@ public class SkipNodeIdentity implements Serializable, Comparable<SkipNodeIdenti
         return nameID;
     }
 
-    public int getNumID() {
+    public BigInteger getNumID() {
         return numID;
     }
 
@@ -44,7 +45,7 @@ public class SkipNodeIdentity implements Serializable, Comparable<SkipNodeIdenti
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
         SkipNodeIdentity that = (SkipNodeIdentity) o;
-        return getNumID() == that.getNumID() &&
+        return getNumID().equals(that.getNumID()) &&
                 getNameID().equals(that.getNameID()) &&
                 getAddress().equals(that.getAddress()) &&
                 getPort() == that.getPort();
@@ -68,11 +69,11 @@ public class SkipNodeIdentity implements Serializable, Comparable<SkipNodeIdenti
 
     @Override
     public String toString() {
-        return "Name ID: "+nameID+"\tNum ID: "+numID+"\tAddress: "+address+"\tPort: "+port;
+        return "Name ID: "+nameID+"\tNum ID: "+numID.toString()+"\tAddress: "+address+"\tPort: "+port;
     }
 
     @Override
     public int compareTo(SkipNodeIdentity o) {
-        return Integer.compare(numID, o.numID);
+        return numID.compareTo(o.numID);
     }
 }

@@ -1,14 +1,12 @@
 package misc;
 
-import lookup.ConcurrentBackupTable;
-import lookup.ConcurrentLookupTable;
 import lookup.LookupTable;
 import lookup.LookupTableFactory;
 import skipnode.SkipNode;
 import skipnode.SkipNodeIdentity;
 
+import java.math.BigInteger;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -24,11 +22,11 @@ public class LocalSkipGraph {
     public LocalSkipGraph(int size, String localAddress, int startingPort, boolean manualJoin) {
         int nameIDSize = ((int) (Math.log(size)/Math.log(2)));
         // Create the numerical IDs.
-        List<Integer> numIDs = new ArrayList<>(size);
-        for(int i = 0; i < size; i++) numIDs.add(i);
+        List<BigInteger> numIDs = new ArrayList<>(size);
+        for(int i = 0; i < size; i++) numIDs.add(BigInteger.valueOf(i));
         // Create the name IDs.
         List<String> nameIDs = numIDs.stream()
-                .map(numID -> prependToLength(Integer.toBinaryString(numID), nameIDSize))
+                .map(numID -> prependToLength(numID.toString(2), nameIDSize))
                 .collect(Collectors.toList());
         // Randomly assign name IDs.
         Collections.shuffle(nameIDs);

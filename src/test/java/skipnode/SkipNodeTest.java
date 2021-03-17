@@ -3,15 +3,14 @@ package skipnode;
 import lookup.LookupTable;
 import middlelayer.MiddleLayer;
 import misc.LocalSkipGraph;
-import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 import underlay.Underlay;
 
+import java.math.BigInteger;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import java.util.Random;
 import java.util.stream.Collectors;
 
 /**
@@ -125,7 +124,7 @@ class SkipNodeTest {
         }
         // First, check the correctness and consistency of the lookup tables.
         // Create a map of num ids to their corresponding lookup tables.
-        Map<Integer, LookupTable> tableMap = g.getNodes().stream()
+        Map<BigInteger, LookupTable> tableMap = g.getNodes().stream()
                 .collect(Collectors.toMap(SkipNode::getNumID, SkipNode::getLookupTable));
         // Check the correctness & consistency of the tables.
         for(SkipNode n : g.getNodes()) {
@@ -224,7 +223,7 @@ class SkipNodeTest {
             }
         }
         // Create a map of num ids to their corresponding lookup tables.
-        Map<Integer, LookupTable> tableMap = g.getNodes().stream()
+        Map<BigInteger, LookupTable> tableMap = g.getNodes().stream()
                 .collect(Collectors.toMap(SkipNode::getNumID, SkipNode::getLookupTable));
         // Check the correctness & consistency of the tables.
         for(SkipNode n : g.getNodes()) {
@@ -254,7 +253,7 @@ class SkipNodeTest {
         // Now, insert every node in a randomized order.
         g.insertAllRandomized();
         // Create a map of num ids to their corresponding lookup tables.
-        Map<Integer, LookupTable> tableMap = g.getNodes().stream()
+        Map<BigInteger, LookupTable> tableMap = g.getNodes().stream()
                 .collect(Collectors.toMap(SkipNode::getNumID, SkipNode::getLookupTable));
         // Check the correctness of the tables.
         for(SkipNode n : g.getNodes()) {
@@ -329,16 +328,18 @@ class SkipNodeTest {
     }
 
     // Checks the correctness of a lookup table owned by the node with the given identity parameters.
-    static void tableCorrectnessCheck(int numID, String nameID, LookupTable table) {
+    static void tableCorrectnessCheck(BigInteger numID, String nameID, LookupTable table) {
         for(int i = 0; i < table.getNumLevels(); i++) {
             List<SkipNodeIdentity> lefts = table.getLefts(i);
             List<SkipNodeIdentity> rights = table.getRights(i);
             for(SkipNodeIdentity l : lefts) {
-                Assertions.assertTrue(l.getNumID() < numID);
+                //l.getNumID() < numID
+                Assertions.assertTrue(l.getNumID().compareTo(numID) == -1);
                 Assertions.assertTrue(SkipNodeIdentity.commonBits(l.getNameID(), nameID) >= i);
             }
             for(SkipNodeIdentity r : rights) {
-                Assertions.assertTrue(r.getNumID() > numID);
+                //r.getNumID() > numID
+                Assertions.assertTrue(r.getNumID().compareTo(numID) == 1);
                 Assertions.assertTrue(SkipNodeIdentity.commonBits(r.getNameID(), nameID) >= i);
             }
         }
@@ -346,7 +347,7 @@ class SkipNodeTest {
 
     // Checks the consistency of a lookup table. In other words, we assert that if x is a neighbor of y at level l,
     // then y is a neighbor of x at level l (in opposite directions).
-    static void tableConsistencyCheck(Map<Integer, LookupTable> tableMap, SkipNode node) {
+    static void tableConsistencyCheck(Map<BigInteger, LookupTable> tableMap, SkipNode node) {
         LookupTable table = node.getLookupTable();
         for(int i = 0; i < table.getNumLevels(); i++) {
             List<SkipNodeIdentity> lefts = table.getLefts(i);

@@ -2,6 +2,7 @@ package lookup;
 
 import skipnode.SkipNodeIdentity;
 
+import java.math.BigInteger;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.locks.ReadWriteLock;
@@ -136,12 +137,13 @@ public class ConcurrentLookupTable implements LookupTable {
      * @return the list of neighbors (both right and left) of the newly inserted node.
      */
     @Override
-    public TentativeTable acquireNeighbors(SkipNodeIdentity owner, int newNumID, String newNameID, int level) {
+    public TentativeTable acquireNeighbors(SkipNodeIdentity owner, BigInteger newNumID, String newNameID, int level) {
         lock.readLock().lock();
         List<List<SkipNodeIdentity>> newTable = new ArrayList<>();
         newTable.add(new ArrayList<>());
         newTable.get(0).add(owner);
-        if(newNumID < owner.getNumID() && !getLeft(level).equals(LookupTable.EMPTY_NODE))
+        //newNumID < owner.getNumID()
+        if(newNumID.compareTo(owner.getNumID()) == -1 && !getLeft(level).equals(LookupTable.EMPTY_NODE))
             newTable.get(0).add(getLeft(level));
         else if(!getRight(level).equals(LookupTable.EMPTY_NODE))
             newTable.get(0).add(getRight(level));
@@ -157,11 +159,11 @@ public class ConcurrentLookupTable implements LookupTable {
     @Override
     public void initializeTable(SkipNodeIdentity owner, TentativeTable tentativeTable) {
         SkipNodeIdentity left = tentativeTable.neighbors.get(0).stream()
-                .filter(x -> x.getNumID() <= owner.getNumID())
+                .filter(x -> (x.getNumID().compareTo(owner.getNumID()) == -1 || x.getNumID().compareTo(owner.getNumID()) == 0)) //x.getNumID() <= owner.getNumID()
                 .findFirst()
                 .orElse(LookupTable.EMPTY_NODE);
         SkipNodeIdentity right = tentativeTable.neighbors.get(0).stream()
-                .filter(x -> x.getNumID() > owner.getNumID())
+                .filter(x -> x.getNumID().compareTo(owner.getNumID()) == 1) //x.getNumID() > owner.getNumID()
                 .findFirst()
                 .orElse(LookupTable.EMPTY_NODE);
         updateLeft(left, tentativeTable.specificLevel);

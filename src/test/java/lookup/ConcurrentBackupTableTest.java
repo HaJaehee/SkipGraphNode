@@ -5,6 +5,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import skipnode.SkipNodeIdentity;
 
+import java.math.BigInteger;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -21,7 +22,7 @@ public class ConcurrentBackupTableTest {
         nodesToInsert = new ArrayList<>();
 
         for (int i = 1; i < 10; i++) {
-            SkipNodeIdentity sn = new SkipNodeIdentity("0000", i, "None", -1);
+            SkipNodeIdentity sn = new SkipNodeIdentity("0000", BigInteger.valueOf(i), "None", -1);
             nodesToInsert.add(sn);
         }
     }

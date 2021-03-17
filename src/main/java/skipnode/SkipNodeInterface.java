@@ -1,8 +1,8 @@
 package skipnode;
 
-import lookup.TentativeTable;
 import middlelayer.MiddleLayer;
 
+import java.math.BigInteger;
 import java.util.List;
 
 public interface SkipNodeInterface {
@@ -53,7 +53,7 @@ public interface SkipNodeInterface {
      * For example: Initiating a search for a SkipNode with NumID 50 from a SnipNode with NumID 10 will return the SkipNodeIdentity of the SnipNode with NumID 50 is it exists. If
      * no such SnipNode exists, the SkipNodeIdentity of the SnipNode whose NumID is closest to 50 among the nodes whose NumID is less than 50 is returned.
      */
-    SkipNodeIdentity searchByNumID(int numID);
+    SkipNodeIdentity searchByNumID(BigInteger numID);
 
     /**
      * Search for the given nameID

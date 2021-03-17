@@ -40,12 +40,14 @@ public class NodeStashProcessor implements Runnable {
                 continue;
             }
             int level = SkipNodeIdentity.commonBits(n.getNameID(), ownIdentity.getNameID());
-            if (n.getNumID() < ownIdentity.getNumID()
+            //n.getNumID() < ownIdentity.getNumID()
+            if (n.getNumID().compareTo(ownIdentity.getNumID()) == -1
                     && !backupTableRef.getLefts(level).contains(n)) {
                 for (int j = level; j >= 0; j--) {
                     backupTableRef.addLeftNode(n, j);
                 }
-            } else if (n.getNumID() >= ownIdentity.getNumID()
+            } //n.getNumID() >= ownIdentity.getNumID()
+            else if ((n.getNumID().compareTo(ownIdentity.getNumID()) == 0 || n.getNumID().compareTo(ownIdentity.getNumID()) == 1)
                     && !backupTableRef.getRights(level).contains(n)) {
                 for (int j = level; j >= 0; j--) {
                     backupTableRef.addRightNode(n, j);

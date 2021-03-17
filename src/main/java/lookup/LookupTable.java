@@ -2,12 +2,13 @@ package lookup;
 
 import skipnode.SkipNodeIdentity;
 
+import java.math.BigInteger;
 import java.util.List;
 
 public interface LookupTable {
 
-    SkipNodeIdentity EMPTY_NODE = new SkipNodeIdentity("EMPTY", -1, "EMPTY", -1);
-    SkipNodeIdentity INVALID_NODE = new SkipNodeIdentity("INVALID", -1, "INVALID", -1);
+    SkipNodeIdentity EMPTY_NODE = new SkipNodeIdentity("EMPTY", BigInteger.valueOf(-1), "EMPTY", -1);
+    SkipNodeIdentity INVALID_NODE = new SkipNodeIdentity("INVALID", BigInteger.valueOf(-1), "INVALID", -1);
 
     /**
      * Updates the left neighbor on the given level to be the node
@@ -98,7 +99,7 @@ public interface LookupTable {
      * @param level the level of the new neighbor.
      * @return the list of neighbors (both right and left) of the newly inserted node.
      */
-    TentativeTable acquireNeighbors(SkipNodeIdentity owner, int newNumID, String newNameID, int level);
+    TentativeTable acquireNeighbors(SkipNodeIdentity owner, BigInteger newNumID, String newNameID, int level);
 
     /**
      * Given a list of potential neighbors, inserts them at the appropriate positions. This should only be called

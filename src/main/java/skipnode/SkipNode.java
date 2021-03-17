@@ -18,6 +18,7 @@ import middlelayer.MiddleLayer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.math.BigInteger;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.LinkedBlockingDeque;
@@ -29,7 +30,7 @@ public class SkipNode implements SkipNodeInterface {
      */
     private final String address;
     private final int port;
-    private final int numID;
+    private final BigInteger numID;
     private final String nameID;
     private final LookupTable lookupTable;
 
@@ -55,7 +56,7 @@ public class SkipNode implements SkipNodeInterface {
         insertionLock.startInsertion();
     }
 
-    public int getNumID() {
+    public BigInteger getNumID() {
         return numID;
     }
 
@@ -101,7 +102,8 @@ public class SkipNode implements SkipNodeInterface {
             // First, find my 0-level neighbor by making a num-id search through the introducer.
             SkipNodeIdentity searchResult = middleLayer.searchByNumID(introducerAddress, introducerPort, numID);
             // Get my 0-level left and right neighbors.
-            if(getNumID() < searchResult.getNumID()) {
+            //getNumID() < searchResult.getNumID()
+            if(getNumID().compareTo(searchResult.getNumID()) == -1) {
                 right = searchResult;
                 left = middleLayer.getLeftNode(right.getAddress(), right.getPort(), 0);
             } else {
@@ -303,7 +305,8 @@ public class SkipNode implements SkipNodeInterface {
     private void insertIntoTable(SkipNodeIdentity node, int minLevel) {
         logger.debug(getNumID() + " has updated its table.");
         version++;
-        int direction = (node.getNumID() < getNumID()) ? 0 : 1;
+        //node.getNumID() < getNumID()
+        int direction = (node.getNumID().compareTo(getNumID()) == -1) ? 0 : 1;
         int maxLevel = SkipNodeIdentity.commonBits(getNameID(), node.getNameID());
         for(int i = minLevel; i <= maxLevel; i++) {
             if(direction == 0) updateLeftNode(node, i);
@@ -326,20 +329,22 @@ public class SkipNode implements SkipNodeInterface {
      * no such SnipNode exists, the SkipNodeIdentity of the SnipNode whose NumID is closest to 50 among the nodes whose NumID is less than 50 is returned.
      */
     @Override
-    public SkipNodeIdentity searchByNumID(int numID) {
+    public SkipNodeIdentity searchByNumID(BigInteger numID) {
         // If this is the node the search request is looking for, return its identity
-        if (numID == this.numID) {
+        if (numID.equals(this.numID)) {
             return getIdentity();
         }
         // Initialize the level to begin looking at
         int level = lookupTable.getNumLevels();
         // If the target is greater than this node's numID, the search should continue to the right
-        if (this.numID < numID) {
+        // this.numID < numID
+        if (this.numID.compareTo(numID) == -1) {
             // Start from the top, while there is no right neighbor, or the right neighbor's num ID is greater than what we are searching for
             // keep going down
             while(level>=0) {
+                //lookupTable.getRight(level).getNumID() > numID
                 if (lookupTable.getRight(level)==LookupTable.EMPTY_NODE ||
-                        lookupTable.getRight(level).getNumID() > numID){
+                        lookupTable.getRight(level).getNumID().compareTo(numID) == 1){
                     level--;
                 } else {
                     break;
@@ -356,8 +361,9 @@ public class SkipNode implements SkipNodeInterface {
             // Start from the top, while there is no right neighbor, or the right neighbor's num ID is greater than what we are searching for
             // keep going down
             while(level>=0) {
+                //lookupTable.getLeft(level).getNumID() < numID
                 if (lookupTable.getLeft(level)==LookupTable.EMPTY_NODE ||
-                        lookupTable.getLeft(level).getNumID() < numID){
+                        lookupTable.getLeft(level).getNumID().compareTo(numID) == -1){
                     level--;
                 } else {
                     break;
@@ -498,7 +504,7 @@ public class SkipNode implements SkipNodeInterface {
 //            logger.debug("incrementing");
             i.addAndGet(1);//i += 1;
 //            logger.debug(i);
-            return new SkipNodeIdentity(""+i, i.get(), ""+i,i.get());
+            return new SkipNodeIdentity(""+i, BigInteger.valueOf(i.get()), ""+i,i.get());
         }
     }
 

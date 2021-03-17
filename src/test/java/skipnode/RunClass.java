@@ -11,6 +11,8 @@ package skipnode;
  Rev. history : 2021-03-17
  Version : 0.0.2
  Added a function createNodeTest() which contains YAML parser.
+ Added logback.
+ Added testcode with incremental features.
  Modifier : Jaehee ha (jaehee.ha@kaist.ac.kr)
  */
 /* -------------------------------------------------------- */

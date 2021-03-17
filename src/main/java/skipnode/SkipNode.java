@@ -1,9 +1,25 @@
 package skipnode;
 
+/* -------------------------------------------------------- */
+/**
+ File name : SkipNode.java
+ Rev. history : 2021-03-17
+ Version : 0.0.2
+ Added a logger.
+ Modifier : Jaehee ha (jaehee.ha@kaist.ac.kr)
+ */
+/* -------------------------------------------------------- */
+
+
+
 import lookup.LookupTable;
 import middlelayer.MiddleLayer;
 
-import java.util.*;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.LinkedBlockingDeque;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -27,6 +43,8 @@ public class SkipNode implements SkipNodeInterface {
 
     // The identity to be returned in case the node is currently unreachable (i.e., being inserted.)
     private static final SkipNodeIdentity unavailableIdentity = LookupTable.EMPTY_NODE;
+
+    private static final Logger logger = LoggerFactory.getLogger(SkipNode.class);
 
     public SkipNode(SkipNodeIdentity snID, LookupTable lookupTable) {
         this.address = snID.getAddress();
@@ -65,6 +83,7 @@ public class SkipNode implements SkipNodeInterface {
      */
     @Override
     public void insert(String introducerAddress, int introducerPort) {
+        logger.debug("hello world!");
         // Do not reinsert an already inserted node.
         if(inserted) return;
         // Trivially insert the first node of the skip graph.

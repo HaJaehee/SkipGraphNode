@@ -1,13 +1,19 @@
 package skipnode;
 
-import java.io.File;
-import java.io.FileNotFoundException;
-import java.io.FileReader;
-import java.io.InputStream;
-import java.io.Reader;
-import java.net.Inet4Address;
-import java.net.UnknownHostException;
-import java.util.Map;
+/* -------------------------------------------------------- */
+/**
+ File name : RunClass.java
+ It is used as a main thread.
+ Author : Jaehee Ha (jaehee.ha@kaist.ac.kr)
+ Creation Date : 2021-03-12
+ Version : 0.0.1
+
+ Rev. history : 2021-03-17
+ Version : 0.0.2
+ Added a function createNodeTest() which contains YAML parser.
+ Modifier : Jaehee ha (jaehee.ha@kaist.ac.kr)
+ */
+/* -------------------------------------------------------- */
 
 import lookup.ConcurrentLookupTable;
 import lookup.LookupTableFactory;
@@ -15,6 +21,13 @@ import middlelayer.MiddleLayer;
 import org.yaml.snakeyaml.Yaml;
 import underlay.Underlay;
 import underlay.udp.UDPUnderlay;
+
+import java.io.FileNotFoundException;
+import java.io.FileReader;
+import java.io.Reader;
+import java.net.Inet4Address;
+import java.net.UnknownHostException;
+import java.util.Map;
 
 public class RunClass {
 

@@ -13,6 +13,7 @@ package skipnode;
  Added a function createNodeTest() which contains YAML parser.
  Added logback.
  Added testcode with incremental features.
+ Added hex id to decimal id features.
  Modifier : Jaehee ha (jaehee.ha@kaist.ac.kr)
  */
 /* -------------------------------------------------------- */
@@ -138,7 +139,7 @@ public class RunClass {
 
         ArrayList<SkipNode> nodeList = new ArrayList<>();
         nodeList.add(createNodeTest("config1.yml"));
-        for (int inc = 1 ; inc < 20 ; inc++) {
+        for (int inc = 1 ; inc < 1000 ; inc++) {
             nodeList.add(createNodeTest("config2.yml",inc));
         }
 

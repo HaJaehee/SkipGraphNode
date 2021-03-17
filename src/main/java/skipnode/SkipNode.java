@@ -116,12 +116,12 @@ public class SkipNode implements SkipNodeInterface {
             try {
                 Thread.sleep(sleepTime);
             } catch (InterruptedException e) {
-                System.err.println("[SkipNode.insert] Could not backoff.");
+                logger.error("[SkipNode.insert] Could not backoff.");
                 e.printStackTrace();
             }
         }
-        System.out.print(getNumID() + " has acquired all the locks: ");
-        ownedLocks.forEach(n -> System.out.print(n.node.getNumID() + ", "));
+        logger.debug(getNumID() + " has acquired all the locks: ");
+        ownedLocks.forEach(n -> logger.debug(n.node.getNumID() + ", "));
         logger.debug("");
         // At this point, we should have acquired all of our neighbors. Now, it is time to add them.
         for(InsertionLock.NeighborInstance n : ownedLocks) {

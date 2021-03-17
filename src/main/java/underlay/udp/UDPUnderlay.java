@@ -2,7 +2,6 @@ package underlay.udp;
 
 import underlay.Underlay;
 import underlay.packets.Request;
-import underlay.packets.RequestType;
 import underlay.packets.Response;
 
 import java.io.IOException;
@@ -17,7 +16,7 @@ public class UDPUnderlay extends Underlay {
      * The nature of UDP requires us to predefine the maximum size of a packet that could be transferred. This parameter
      * defines the maximum size of a packet in bytes.
      */
-    public static final int MAX_PACKET_SIZE = 512;
+    public static final int MAX_PACKET_SIZE = 1024;
 
     // The thread that continuously listens for incoming connection in the background. As opposed to TCP, both requests
     // and responses will be received by this thread.

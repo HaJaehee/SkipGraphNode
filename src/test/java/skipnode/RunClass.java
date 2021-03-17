@@ -27,13 +27,14 @@ import java.io.FileReader;
 import java.io.Reader;
 import java.net.Inet4Address;
 import java.net.UnknownHostException;
+import java.util.ArrayList;
 import java.util.Map;
 
 public class RunClass {
 
-    public static int LEVEL = 4;
+    public static int LEVEL = 32;
 
-    public static SkipNode createNodeTest(String fileName) {
+    public static SkipNode createNodeTest(String fileName, int increment) {
 
         Yaml yparser = new Yaml();
         Reader yamlFile = null;
@@ -54,6 +55,11 @@ public class RunClass {
         if (nameIdAssignProto.equals("none")) {
             nameId = yamlMaps.get("name_id_value_self_assigned").toString();
         }
+        else if (nameIdAssignProto.equals("incremental")){
+            nameId = "1101";
+            String binary = Integer.toBinaryString(increment);
+            nameId = nameId + String.format("%28s", binary).replaceAll(" ", "0");
+        }
         else {
             //TODO: TBD
         }
@@ -62,6 +68,9 @@ public class RunClass {
         int numId = 0;
         if (numIdAssignProto.equals("none")) {
             numId = Integer.parseInt(yamlMaps.get("numerical_id_value_self_assigned").toString());
+        }
+        else if (numIdAssignProto.equals("incremental")){
+            numId = 1234 + increment;
         }
         else {
             //TODO: TBD
@@ -74,12 +83,21 @@ public class RunClass {
             e.printStackTrace();
             return null;
         }
+        String portAssignProto = yamlMaps.get("port_assignment_protocol").toString();
         int port = 0;
-        try {
-            port = Integer.parseInt( yamlMaps.get("port").toString());
-        } catch (NumberFormatException e) {
-            e.printStackTrace();
-            return null;
+        if (portAssignProto.equals("none")){
+            try {
+                port = Integer.parseInt(yamlMaps.get("port_value_self_assigned").toString());
+            } catch (NumberFormatException e) {
+                e.printStackTrace();
+                return null;
+            }
+        }
+        else if (portAssignProto.equals("incremental")) {
+            port = 11099 + increment;
+        }
+        else {
+            //TODO: TBD
         }
 
         String introducerAddress = yamlMaps.get("introducer_address").toString();
@@ -108,29 +126,23 @@ public class RunClass {
 
         node.insert(introducerAddress, introducerPort);
 
-        System.out.println(node.getNumID());
-
         return node;
     }
 
+    public static SkipNode createNodeTest(String fileName) {
+        return createNodeTest(fileName, 0);
+    }
     public static void main(String[] args) {
 
-        SkipNode node1 = createNodeTest("config1.yml");
-        if (node1 == null) {
-            return;
-        }
-        SkipNode node2 = createNodeTest("config2.yml");
-        if (node2 == null) {
-            return;
-        }
-        SkipNode node3 = createNodeTest("config3.yml");
-        if (node3 == null) {
-            return;
+        ArrayList<SkipNode> nodeList = new ArrayList<>();
+        nodeList.add(createNodeTest("config1.yml"));
+        for (int inc = 1 ; inc < 20 ; inc++) {
+            nodeList.add(createNodeTest("config2.yml",inc));
         }
 
-        System.out.println((node3.searchByNameID("1103")).result.getNameID());
-        System.out.println((node2.searchByNumID(3456).getNumID()));
-
-
+        System.out.println((nodeList.get(19).getNameID()).toString());
+        System.out.println((nodeList.get(19).searchByNameID("110100000")).result.getNameID());
+        System.out.println((nodeList.get(19).searchByNameID("11010000000000000000000000000000")).result.getNameID());
+        System.out.println((nodeList.get(0).searchByNumID(3456).getNumID()));
     }
 }

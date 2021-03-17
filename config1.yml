@@ -1,9 +1,10 @@
 underlay: udp
-port: 1099
+port_assignment_protocol: none
+port_value_self_assigned: 11099
 introducer_address: none
 introducer_port: 0
 name_id_assignment_protocol: none
-name_id_value_self_assigned: 1100
+name_id_value_self_assigned: 11010000000000000000000000000000
 numerical_id_assignment_protocol: none
 numerical_id_value_self_assigned: 1234
 storage_path: none

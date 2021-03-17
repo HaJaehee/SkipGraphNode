@@ -60,10 +60,10 @@ public class RunClass {
             nameId = new BigInteger(yamlMaps.get("name_id_value_self_assigned").toString(), 16).toString(2);
         }
         else if (nameIdAssignProto.equals("incremental")){
-            BigInteger bigInt = new BigInteger("99f3e5a40283578314474594a3d58d4aa53d62feb72ea57acdcb2431180f32fe18410fbc943dd5c8bdf2463e01ac7cfa320120863fca0c0439b9a68b5ca7dfdf24b5e22d2323944aebcefd18ed2e8aad8d933e200207f79cc2841edaa03ece36d38e5d4a6bd63827649f1db5495af13c73e3c5889c27cb47fa720f55cc28c0a13b1d33ceeaaba01541aa65d0925a16173a09b629b4949ebb17f702ddf9237baddb9fa51c83f00a89d95347ee2138c7f45b17f47ffefe0f261e5b2c5b0327ccd9bfc1edec840fb3f510a237cfb17b634a5120c67a1977eec3e258518183441c0d576838481f66c789e84c2ec84d7714fc6173b2552fa56f50a0db52a920cfb3cf5a199d1cf83286f4ab5f3c88b2d61d8a8dadedefcbc7bbcba71ab8b166fbcedec3b3cfa8b8beba1e70187bf3969750379a39d998ed46d86487ed6e01fecd1a11", 16);
+            BigInteger bigInt = new BigInteger("05e0233cfa62dce67e36240f67f90f0c472a80f199599f65e7fcf97c08eb9a97", 16);
             bigInt = bigInt.add(BigInteger.valueOf(increment));
             nameId = bigInt.toString(2);
-            //nameId = nameId + String.format("%256s", binary).replaceAll(" ", "0");
+            nameId = String.format("%256s", nameId).replaceAll(" ", "0");
         }
         else {
             //TODO: TBD
@@ -75,7 +75,7 @@ public class RunClass {
             numId = new BigInteger(yamlMaps.get("numerical_id_value_self_assigned").toString(), 16);
         }
         else if (numIdAssignProto.equals("incremental")){
-            numId = new BigInteger("99f3e5a40283578314474594a3d58d4aa53d62feb72ea57acdcb2431180f32fe18410fbc943dd5c8bdf2463e01ac7cfa320120863fca0c0439b9a68b5ca7dfdf24b5e22d2323944aebcefd18ed2e8aad8d933e200207f79cc2841edaa03ece36d38e5d4a6bd63827649f1db5495af13c73e3c5889c27cb47fa720f55cc28c0a13b1d33ceeaaba01541aa65d0925a16173a09b629b4949ebb17f702ddf9237baddb9fa51c83f00a89d95347ee2138c7f45b17f47ffefe0f261e5b2c5b0327ccd9bfc1edec840fb3f510a237cfb17b634a5120c67a1977eec3e258518183441c0d576838481f66c789e84c2ec84d7714fc6173b2552fa56f50a0db52a920cfb3cf5a199d1cf83286f4ab5f3c88b2d61d8a8dadedefcbc7bbcba71ab8b166fbcedec3b3cfa8b8beba1e70187bf3969750379a39d998ed46d86487ed6e01fecd1a11", 16);
+            numId = new BigInteger("05e0233cfa62dce67e36240f67f90f0c472a80f199599f65e7fcf97c08eb9a97", 16);
             numId = numId.add(BigInteger.valueOf(increment));
         }
         else {
@@ -148,7 +148,7 @@ public class RunClass {
 
         System.out.println((nodeList.get(19).getNameID()).toString());
         System.out.println((nodeList.get(19).searchByNameID("110100000")).result.getNameID());
-        System.out.println((nodeList.get(19).searchByNameID("11010000000000000000000000000000")).result.getNameID());
+        System.out.println((nodeList.get(19).searchByNameID("11010000000000000000000000000000")).result.getNameID().length());
         System.out.println((nodeList.get(0).searchByNumID(BigInteger.valueOf(3456)).getNumID().toString(16)));
     }
 }

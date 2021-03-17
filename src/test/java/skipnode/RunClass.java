@@ -130,5 +130,7 @@ public class RunClass {
 
         System.out.println((node3.searchByNameID("1103")).result.getNameID());
         System.out.println((node2.searchByNumID(3456).getNumID()));
+
+
     }
 }

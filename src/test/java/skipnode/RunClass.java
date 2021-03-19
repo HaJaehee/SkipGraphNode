@@ -195,7 +195,7 @@ public class RunClass {
         System.out.println((nodeList.get(0).searchByNameID("110100000")).result.getNameID().length());
         System.out.println((nodeList.get(19).searchByNameID("11010000000000000000000000000000")).result.getNameID().length());
         System.out.println((nodeList.get(0).searchByNumID(BigInteger.valueOf(3456)).getNumID().toString(16)));
-        System.out.println((nodeList.get(19).searchByNameID("0000010111100000001000110011110011111010011000101101110011100110011111100011011000100100000011110110011111111001000011110000110001000111001010101000000011110001100110010101100110011111011001011110011111111100111110010111110000001000111010111001101010010111").result.getNumID().toString(16)));
-        System.out.println((nodeList.get(0).searchByNumID(new BigInteger("5e0233cfa62dce67e36240f67f90f0c472a80f199599f65e7fcf97c08eb9a97", 16)).getRedisResult()));
+        System.out.println((nodeList.get(19).getNumID().toString(16)));
+        System.out.println((nodeList.get(0).searchByNumID(new BigInteger("5e0233cfa62dce67e36240f67f90f0c472a80f199599f65e7fcf97c08eb9aaa", 16)).getRedisResult()));
     }
 }

@@ -7,4 +7,10 @@ name_id_assignment_protocol: none
 name_id_value_self_assigned: 05e0233cfa62dce67e36240f67f90f0c472a80f199599f65e7fcf97c08eb9a97
 numerical_id_assignment_protocol: none
 numerical_id_value_self_assigned: 05e0233cfa62dce67e36240f67f90f0c472a80f199599f65e7fcf97c08eb9a97
+storage_type: redis
 storage_path: none
+redis_pool_config: none
+redis_address: 192.168.0.4
+redis_port: 6379
+redis_password: winslab
+redis_timeout: 1000

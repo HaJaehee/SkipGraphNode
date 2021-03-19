@@ -7,16 +7,22 @@ package skipnode;
  Version : 0.0.2
  Added a logger.
  Modifier : Jaehee ha (jaehee.ha@kaist.ac.kr)
+
+ Rev. history : 2021-03-19
+ Version : 1.0.0
+ Added Jedis features as a key-value storage system.
+ Added storage path features as a file storage system.
+ Modifier : Jaehee ha (jaehee.ha@kaist.ac.kr)
  */
 /* -------------------------------------------------------- */
 
 
-
 import lookup.LookupTable;
 import middlelayer.MiddleLayer;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import redis.clients.jedis.Jedis;
+import redis.clients.jedis.JedisPool;
 
 import java.math.BigInteger;
 import java.util.ArrayList;
@@ -33,6 +39,14 @@ public class SkipNode implements SkipNodeInterface {
     private final BigInteger numID;
     private final String nameID;
     private final LookupTable lookupTable;
+    private final String storagePath;
+    private final String redisPoolConfig;
+    private final String redisAddress;
+    private final int redisPort;
+    private final String redisPassword;
+    private final int redisTimeout;
+    private String redisResult;
+    private JedisPool jedisPool;
 
     private MiddleLayer middleLayer;
 
@@ -53,6 +67,14 @@ public class SkipNode implements SkipNodeInterface {
         this.numID = snID.getNumID();
         this.nameID = snID.getNameID();
         this.lookupTable = lookupTable;
+        this.storagePath = snID.getStoragePath();
+        this.redisPoolConfig = snID.getRedisPoolConfig();
+        this.redisAddress = snID.getRedisAddress();
+        this.redisPort = snID.getRedisPort();
+        this.redisTimeout = snID.getRedisTimeout();
+        this.redisPassword = snID.getRedisPassword();
+        this.redisResult = snID.getRedisResult();
+        this.jedisPool = null;
         insertionLock.startInsertion();
     }
 
@@ -60,16 +82,27 @@ public class SkipNode implements SkipNodeInterface {
         return numID;
     }
 
-    public String getNameID() {
-        return nameID;
-    }
+    public String getNameID() { return nameID; }
 
     public LookupTable getLookupTable() {
         return lookupTable;
     }
 
-    public SkipNodeIdentity getIdentity() {
-        return new SkipNodeIdentity(nameID, numID, address, port, version);
+    public String getStoragePath() { return storagePath; }
+
+    public void setJedisPool() {
+        if (jedisPool == null && this.redisAddress != null) {
+            JedisFactoryTest jft = new JedisFactoryTest(this.redisPoolConfig, this.redisAddress, this.redisPort, this.redisTimeout, this.redisPassword, false);
+            jedisPool = jft.getJedisPoolInstance();
+        }
+    }
+
+    public String getRedisResult() { return redisResult; }
+
+    //TODO: skip node identity는 serializable 해야 한다.
+    //TODO: identity에 redis get 값을 넣으면 되는 거 아닌가?
+    //TODO: 그럼 member variable에는 redis에 접속할 수 있는 정보를 넣으면 되는건가?
+    public SkipNodeIdentity getIdentity() { return new SkipNodeIdentity(nameID, numID, address, port, version, storagePath, redisPoolConfig, redisAddress, redisPort, redisTimeout, redisPassword, redisResult);
     }
 
     @Override
@@ -331,7 +364,13 @@ public class SkipNode implements SkipNodeInterface {
     @Override
     public SkipNodeIdentity searchByNumID(BigInteger numID) {
         // If this is the node the search request is looking for, return its identity
+        setJedisPool();
         if (numID.equals(this.numID)) {
+            if (jedisPool != null) {
+                Jedis jedis = jedisPool.getResource();
+                redisResult = jedis.get(numID.toString(16));
+                jedis.close();
+            }
             return getIdentity();
         }
         // Initialize the level to begin looking at
@@ -371,6 +410,11 @@ public class SkipNode implements SkipNodeInterface {
             }
             // If the level is less than zero, then this node is the closest node to the numID being searched for from the right. Return.
             if (level < 0) {
+                if (jedisPool != null) {
+                    Jedis jedis = jedisPool.getResource();
+                    redisResult = jedis.get(numID.toString(16));
+                    jedis.close();
+                }
                 return getIdentity();
             }
             // Else, delegate the search to that node on the right
@@ -397,7 +441,13 @@ public class SkipNode implements SkipNodeInterface {
      */
     @Override
     public SearchResult searchByNameID(String targetNameID) {
+        setJedisPool();
         if(nameID.equals(targetNameID)) {
+            if (jedisPool != null) {
+                Jedis jedis = jedisPool.getResource();
+                redisResult = jedis.get((new BigInteger(targetNameID,2)).toString(16));
+                jedis.close();
+            }
             return new SearchResult(getIdentity());
         }
         // If the node is not completely inserted yet, return a tentative identity.
@@ -407,6 +457,11 @@ public class SkipNode implements SkipNodeInterface {
         // Find the level in which the search should be started from.
         int level = SkipNodeIdentity.commonBits(nameID, targetNameID);
         if(level < 0) {
+            if (jedisPool != null) {
+                Jedis jedis = jedisPool.getResource();
+                redisResult = jedis.get((new BigInteger(targetNameID,2)).toString(16));
+                jedis.close();
+            }
             return new SearchResult(getIdentity());
         }
         // Initiate the search.

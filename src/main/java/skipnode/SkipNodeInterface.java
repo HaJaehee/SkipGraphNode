@@ -1,5 +1,15 @@
 package skipnode;
 
+/* -------------------------------------------------------- */
+/**
+ File name : SkipNodeInterface.java
+ Rev. history : 2021-03-22
+ Version : 1.0.1
+ Added getResourceByNumID(), getResourceByNameID(), storeResourceByNumID(), and storeResourceByNameID().
+ Modifier : Jaehee ha (jaehee.ha@kaist.ac.kr)
+ */
+/* -------------------------------------------------------- */
+
 import middlelayer.MiddleLayer;
 
 import java.math.BigInteger;
@@ -46,6 +56,22 @@ public interface SkipNodeInterface {
     boolean delete();
 
     /**
+     * TODO
+     * @param numID
+     * @return The resource value
+     */
+    String getResourceByNumID(BigInteger numID);
+
+    /**
+     * TODO
+     * @param numID
+     * @param resourceKey
+     * @param resourceValue
+     * @return
+     */
+    SkipNodeIdentity storeResourceByNumID(BigInteger numID, String resourceKey, String resourceValue);
+
+    /**
      * Search for the given numID
      * @param numID The numID to search for
      * @return The SkipNodeIdentity of the node with the given numID. If it does not exist, returns the SkipNodeIdentity of the SkipNode with NumID closest to the given
@@ -54,6 +80,22 @@ public interface SkipNodeInterface {
      * no such SnipNode exists, the SkipNodeIdentity of the SnipNode whose NumID is closest to 50 among the nodes whose NumID is less than 50 is returned.
      */
     SkipNodeIdentity searchByNumID(BigInteger numID);
+
+    /**
+     * TODO
+     * @param nameID
+     * @return The resource value
+     */
+    String getResourceByNameID(String nameID);
+
+    /**
+     * TODO
+     * @param nameID
+     * @param resourceKey
+     * @param resourceValue
+     * @return The SkipNodeIdentity
+     */
+    SearchResult storeResourceByNameID(String nameID, String resourceKey, String resourceValue);
 
     /**
      * Search for the given nameID

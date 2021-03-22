@@ -17,7 +17,13 @@ package skipnode;
  Rev. history : 2021-03-22
  Version : 1.0.1
  Modified Jedis features as a key-value storage system.
+ Added  Added getResourceByNumID(), getResourceByNameID(), storeResourceByNumID(), and storeResourceByNameID().
  Modifier : Jaehee ha (jaehee.ha@kaist.ac.kr)
+
+ //TODO get a set by name ID prefix
+ //TODO store resource by num ID or resource key
+ //TODO remove get resource by name ID
+ //TODO replicate resource into nodes having common name ID prefix
  */
 /* -------------------------------------------------------- */
 
@@ -104,7 +110,9 @@ public class SkipNode implements SkipNodeInterface {
         }
     }
 
-    public String getResourceQueryResult() { return resourceQueryResult; }
+    private void setResourceValueByKey(String resourceKey, String resourceQueryResult) {
+        this.resourceQueryResult = resourceQueryResult;
+    }
 
     //TODO: skip node identity는 serializable 해야 한다.
     //TODO: identity에 redis get 값을 넣으면 되는 거 아닌가?
@@ -361,19 +369,21 @@ public class SkipNode implements SkipNodeInterface {
     }
 
     /**
-     * Search for the given numID
-     * @param numID The numID to search for
-     * @return The SkipNodeIdentity of the node with the given numID. If it does not exist, returns the SkipNodeIdentity of the SkipNode with NumID closest to the given
-     * numID from the direction the search is initiated.
-     * For example: Initiating a search for a SkipNode with NumID 50 from a SnipNode with NumID 10 will return the SkipNodeIdentity of the SnipNode with NumID 50 is it exists. If
-     * no such SnipNode exists, the SkipNodeIdentity of the SnipNode whose NumID is closest to 50 among the nodes whose NumID is less than 50 is returned.
+     * TODO
+     * @param numID
+     * @return The resource Value
      */
     @Override
-    public SkipNodeIdentity searchByNumID(BigInteger numID) {
+    public String getResourceByNumID(BigInteger numID) {
+        return getResourceByNumID(numID, true).getResourceQueryResult();
+    }
+
+
+    private SkipNodeIdentity getResourceByNumID(BigInteger numID, boolean isGettingResource) {
         // If this is the node the search request is looking for, return its identity
-        setJedisPool();
         if (numID.equals(this.numID)) {
-            if (jedisPool != null) {
+            if (isGettingResource && isUsingRedis) {
+                setJedisPool();
                 Jedis jedis = jedisPool.getResource();
                 resourceQueryResult = jedis.get(numID.toString(16));
                 jedis.close();
@@ -417,7 +427,8 @@ public class SkipNode implements SkipNodeInterface {
             }
             // If the level is less than zero, then this node is the closest node to the numID being searched for from the right. Return.
             if (level < 0) {
-                if (jedisPool != null) {
+                if (isGettingResource && isUsingRedis) {
+                    setJedisPool();
                     Jedis jedis = jedisPool.getResource();
                     resourceQueryResult = jedis.get(numID.toString(16));
                     jedis.close();
@@ -428,6 +439,30 @@ public class SkipNode implements SkipNodeInterface {
             SkipNodeIdentity delegateNode = lookupTable.getLeft(level);
             return middleLayer.searchByNumID(delegateNode.getAddress(), delegateNode.getPort(), numID);
         }
+    }
+
+    /**
+     * TODO
+     * @param numID
+     * @param resourceKey
+     * @param resourceValue
+     * @return The SkipNodeIdentity
+     */
+    public SkipNodeIdentity storeResourceByNumID(BigInteger numID, String resourceKey, String resourceValue) {
+        return searchByNumID(numID);//?????????????????????????????????????????????
+    }
+
+    /**
+     * Search for the given numID
+     * @param numID The numID to search for
+     * @return The SkipNodeIdentity of the node with the given numID. If it does not exist, returns the SkipNodeIdentity of the SkipNode with NumID closest to the given
+     * numID from the direction the search is initiated.
+     * For example: Initiating a search for a SkipNode with NumID 50 from a SnipNode with NumID 10 will return the SkipNodeIdentity of the SnipNode with NumID 50 is it exists. If
+     * no such SnipNode exists, the SkipNodeIdentity of the SnipNode whose NumID is closest to 50 among the nodes whose NumID is less than 50 is returned.
+     */
+    @Override
+    public SkipNodeIdentity searchByNumID(BigInteger numID) {
+        return getResourceByNumID(numID, false);
     }
 
     @Override
@@ -441,16 +476,19 @@ public class SkipNode implements SkipNodeInterface {
     }
 
     /**
-     * Performs a name ID lookup over the skip-graph. If the exact name ID is not found, the most similar one is
-     * returned.
-     * @param targetNameID the target name ID.
-     * @return the node with the name ID most similar to the target name ID.
+     * TODO
+     * @param targetNameID
+     * @return The resource value
      */
-    @Override
-    public SearchResult searchByNameID(String targetNameID) {
-        setJedisPool();
+    public String getResourceByNameID(String targetNameID){
+        return getResourceByNameID(nameID, true).result.getResourceQueryResult();
+    }
+
+    private SearchResult getResourceByNameID(String targetNameID, boolean isGettingResource) {
+
         if(nameID.equals(targetNameID)) {
-            if (jedisPool != null) {
+            if (isGettingResource && isUsingRedis) {
+                setJedisPool();
                 Jedis jedis = jedisPool.getResource();
                 resourceQueryResult = jedis.get((new BigInteger(targetNameID,2)).toString(16));
                 jedis.close();
@@ -464,7 +502,8 @@ public class SkipNode implements SkipNodeInterface {
         // Find the level in which the search should be started from.
         int level = SkipNodeIdentity.commonBits(nameID, targetNameID);
         if(level < 0) {
-            if (jedisPool != null) {
+            if (isGettingResource && isUsingRedis) {
+                setJedisPool();
                 Jedis jedis = jedisPool.getResource();
                 resourceQueryResult = jedis.get((new BigInteger(targetNameID,2)).toString(16));
                 jedis.close();
@@ -473,6 +512,28 @@ public class SkipNode implements SkipNodeInterface {
         }
         // Initiate the search.
         return middleLayer.searchByNameIDRecursive(address, port, targetNameID, level);
+    }
+
+    /**
+     * TODO
+     * @param nameID
+     * @param resourceKey
+     * @param resourceValue
+     * @return The SkipNodeIdentity
+     */
+    public SearchResult storeResourceByNameID(String nameID, String resourceKey, String resourceValue){
+        return null;
+    }
+
+    /**
+     * Performs a name ID lookup over the skip-graph. If the exact name ID is not found, the most similar one is
+     * returned.
+     * @param targetNameID the target name ID.
+     * @return the node with the name ID most similar to the target name ID.
+     */
+    @Override
+    public SearchResult searchByNameID(String targetNameID) {
+        return getResourceByNameID(targetNameID, false);
     }
 
     /**

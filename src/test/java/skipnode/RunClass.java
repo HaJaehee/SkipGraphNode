@@ -185,13 +185,15 @@ public class RunClass {
             nodeList.add(createNodeTest("config2.yml",inc));
         }
 
-        System.out.println(nodeList.get(0).searchByNumID(new BigInteger(exampleHash, 16)).getResourceQueryResult());
+        System.out.println(nodeList.get(0).getResourceByNumID(new BigInteger(exampleHash, 16)));
         System.out.println((nodeList.get(19).getNameID()));
         System.out.println((nodeList.get(0).searchByNameID("110100000")).result.getNameID());
         System.out.println((nodeList.get(0).searchByNameID("110100000")).result.getNameID().length());
         System.out.println((nodeList.get(19).searchByNameID("11010000000000000000000000000000")).result.getNameID().length());
         System.out.println((nodeList.get(0).searchByNumID(BigInteger.valueOf(3456)).getNumID().toString(16)));
         System.out.println((nodeList.get(19).getNumID().toString(16)));
-        System.out.println((nodeList.get(0).searchByNumID(new BigInteger("5e0233cfa62dce67e36240f67f90f0c472a80f199599f65e7fcf97c08eb9aaa", 16)).getResourceQueryResult()));
+        System.out.println(nodeList.get(10).getResourceByNumID(new BigInteger("5e0233cfa62dce67e36240f67f90f0c472a80f199599f65e7fcf97c08eb9a97", 16)));
+        System.out.println(nodeList.get(10).searchByNumID(new BigInteger("5e0233cfa62dce67e36240f67f90f0c472a80f199599f65e7fcf97c08eb9a97", 16)).getNumID().toString(16));
+        System.out.println(nodeList.get(0).getResourceByNameID("11010000000000000000000000000000"));
     }
 }

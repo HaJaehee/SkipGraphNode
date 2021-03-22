@@ -17,10 +17,12 @@ package skipnode;
  Rev. history : 2021-03-22
  Version : 1.0.1
  Modified Jedis features as a key-value storage system.
- Added  Added getResourceByNumID(), getResourceByNameID(), storeResourceByNumID(), and storeResourceByNameID().
+ Added  Added getResourceByNumID(), getNumIDSetByNameID(), storeResourceByNumID(), and storeResourceByNameID().
  Modifier : Jaehee ha (jaehee.ha@kaist.ac.kr)
 
- //TODO get a set by name ID prefix
+ //TODO get a set by searching common name ID prefix
+ //TODO get a num ID having minimum name ID body having common name ID prefix. e.g., prefix: 1011, body: 0000
+ //     hint: go left node recursively
  //TODO store resource by num ID or resource key
  //TODO remove get resource by name ID
  //TODO replicate resource into nodes having common name ID prefix
@@ -478,10 +480,11 @@ public class SkipNode implements SkipNodeInterface {
     /**
      * TODO
      * @param targetNameID
-     * @return The resource value
+     * @return The number ID set
      */
-    public String getResourceByNameID(String targetNameID){
-        return getResourceByNameID(nameID, true).result.getResourceQueryResult();
+    @Override
+    public ArrayList<SearchResult> getNumIDSetByNameID(String targetNameID){
+        return null;
     }
 
     private SearchResult getResourceByNameID(String targetNameID, boolean isGettingResource) {

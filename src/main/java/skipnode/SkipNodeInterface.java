@@ -5,7 +5,7 @@ package skipnode;
  File name : SkipNodeInterface.java
  Rev. history : 2021-03-22
  Version : 1.0.1
- Added getResourceByNumID(), getResourceByNameID(), storeResourceByNumID(), and storeResourceByNameID().
+ Added getResourceByNumID(), getNumIDSetByNameID(), storeResourceByNumID(), and storeResourceByNameID().
  Modifier : Jaehee ha (jaehee.ha@kaist.ac.kr)
  */
 /* -------------------------------------------------------- */
@@ -13,6 +13,7 @@ package skipnode;
 import middlelayer.MiddleLayer;
 
 import java.math.BigInteger;
+import java.util.ArrayList;
 import java.util.List;
 
 public interface SkipNodeInterface {
@@ -67,7 +68,7 @@ public interface SkipNodeInterface {
      * @param numID
      * @param resourceKey
      * @param resourceValue
-     * @return
+     * @return The SkipNodeIdentity
      */
     SkipNodeIdentity storeResourceByNumID(BigInteger numID, String resourceKey, String resourceValue);
 
@@ -84,9 +85,9 @@ public interface SkipNodeInterface {
     /**
      * TODO
      * @param nameID
-     * @return The resource value
+     * @return The number ID set
      */
-    String getResourceByNameID(String nameID);
+    ArrayList<SearchResult> getNumIDSetByNameID(String nameID);
 
     /**
      * TODO

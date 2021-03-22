@@ -194,6 +194,5 @@ public class RunClass {
         System.out.println((nodeList.get(19).getNumID().toString(16)));
         System.out.println(nodeList.get(10).getResourceByNumID(new BigInteger("5e0233cfa62dce67e36240f67f90f0c472a80f199599f65e7fcf97c08eb9a97", 16)));
         System.out.println(nodeList.get(10).searchByNumID(new BigInteger("5e0233cfa62dce67e36240f67f90f0c472a80f199599f65e7fcf97c08eb9a97", 16)).getNumID().toString(16));
-        System.out.println(nodeList.get(0).getResourceByNameID("11010000000000000000000000000000"));
     }
 }

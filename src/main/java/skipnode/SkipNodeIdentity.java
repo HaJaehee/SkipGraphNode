@@ -6,6 +6,11 @@ package skipnode;
  Version : 1.0.0
  Added storage path and jedis.
  Modifier : Jaehee ha (jaehee.ha@kaist.ac.kr)
+
+ Rev. history : 2021-03-22
+ Version : 1.0.1
+ Modified Jedis features as a key-value storage system.
+ Modifier : Jaehee ha (jaehee.ha@kaist.ac.kr)
  */
 /* -------------------------------------------------------- */
 
@@ -21,49 +26,61 @@ public class SkipNodeIdentity implements Serializable, Comparable<SkipNodeIdenti
     private final String address;
     private final int port;
     private final String storagePath;
+    private final boolean isUsingRedis;
     private final String redisPoolConfig;
     private final String redisAddress;
     private final int redisPort;
     private final String redisPassword;
     private final int redisTimeout;
-    private final String redisResult;
+    private final String resourceQueryResult;
 
     // Denotes the lookup table version.
     public int version;
 
-    public SkipNodeIdentity(String nameID, BigInteger numID, String address, int port, int version, String storagePath, String redisPoolConfig, String redisAddress, int redisPort, int redisTimeout, String redisPassword, String redisResult) {
+    public SkipNodeIdentity(String nameID, BigInteger numID, String address, int port, int version, String storagePath, Boolean isUsingRedis, String resourceQueryResult) {
         this.nameID = nameID;
         this.numID = numID;
         this.address = address;
         this.port = port;
         this.version = version;
         this.storagePath = storagePath;
-        this.redisPoolConfig = redisPoolConfig;
-        this.redisAddress = redisAddress;
-        this.redisPort = redisPort;
-        this.redisTimeout = redisTimeout;
-        this.redisPassword = redisPassword;
-        this.redisResult = redisResult;
+        this.isUsingRedis = isUsingRedis;
+        if (isUsingRedis) {
+            this.redisPoolConfig = null;
+            this.redisAddress = "192.168.0.4";
+            this.redisPort = 6379;
+            this.redisTimeout = 1000;
+            this.redisPassword = "winslab";
+            this.resourceQueryResult = resourceQueryResult;
+        }
+        else {
+            this.redisPoolConfig = null;
+            this.redisAddress = null;
+            this.redisPort = 0;
+            this.redisTimeout = 0;
+            this.redisPassword = null;
+            this.resourceQueryResult = null;
+        }
     }
 
     public SkipNodeIdentity(String nameID, BigInteger numID, String address, int port) {
-        this(nameID, numID, address, port, 0, null, null, null, 0, 0, null, null);
+        this(nameID, numID, address, port, 0, null, false, null);
     }
 
     public SkipNodeIdentity(String nameID, BigInteger numID, String address, int port, int version, String storagePath) {
-        this(nameID, numID, address, port, version, storagePath, null, null, 0, 0, null, null);
+        this(nameID, numID, address, port, version, storagePath, false, null);
     }
 
     public SkipNodeIdentity(String nameID, BigInteger numID, String address, int port, String storagePath) {
         this(nameID, numID, address, port, 0, storagePath);
     }
 
-    public SkipNodeIdentity(String nameID, BigInteger numID, String address, int port, int version, String redisPoolConfig, String redisAddress, int redisPort, int redisTimeout, String redisPassword, String redisResult) {
-        this(nameID, numID, address, port, version, null, redisPoolConfig, redisAddress, redisPort, redisTimeout, redisPassword, redisResult);
+    public SkipNodeIdentity(String nameID, BigInteger numID, String address, int port, int version, boolean isUsingRedis, String resourceQueryResult) {
+        this(nameID, numID, address, port, version, null, isUsingRedis, resourceQueryResult);
     }
 
-    public SkipNodeIdentity(String nameID, BigInteger numID, String address, int port, String redisPoolConfig, String redisAddress, int redisPort, int redisTimeout, String redisPassword, String redisResult) {
-        this(nameID, numID, address, port, 0, redisPoolConfig, redisAddress, redisPort, redisTimeout, redisPassword, redisResult);
+    public SkipNodeIdentity(String nameID, BigInteger numID, String address, int port, boolean isUsingRedis, String resourceQueryResult) {
+        this(nameID, numID, address, port, 0, isUsingRedis, resourceQueryResult);
     }
 
 
@@ -83,6 +100,8 @@ public class SkipNodeIdentity implements Serializable, Comparable<SkipNodeIdenti
 
     public String getStoragePath() { return storagePath; }
 
+    public boolean isUsingRedis() { return isUsingRedis; }
+
     public String getRedisPoolConfig() { return redisPoolConfig; }
 
     public String getRedisAddress() { return redisAddress; }
@@ -93,12 +112,12 @@ public class SkipNodeIdentity implements Serializable, Comparable<SkipNodeIdenti
 
     public String getRedisPassword() { return redisPassword; }
 
-    public String getRedisResult() {
-        if (redisResult == null) {
+    public String getResourceQueryResult() {
+        if (resourceQueryResult == null) {
             return "";
         }
         else {
-            return redisResult;
+            return resourceQueryResult;
         }
     }
 

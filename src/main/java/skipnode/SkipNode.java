@@ -13,6 +13,11 @@ package skipnode;
  Added Jedis features as a key-value storage system.
  Added storage path features as a file storage system.
  Modifier : Jaehee ha (jaehee.ha@kaist.ac.kr)
+
+ Rev. history : 2021-03-22
+ Version : 1.0.1
+ Modified Jedis features as a key-value storage system.
+ Modifier : Jaehee ha (jaehee.ha@kaist.ac.kr)
  */
 /* -------------------------------------------------------- */
 
@@ -40,12 +45,13 @@ public class SkipNode implements SkipNodeInterface {
     private final String nameID;
     private final LookupTable lookupTable;
     private final String storagePath;
+    private final boolean isUsingRedis;
     private final String redisPoolConfig;
     private final String redisAddress;
     private final int redisPort;
     private final String redisPassword;
     private final int redisTimeout;
-    private String redisResult;
+    private String resourceQueryResult;
     private JedisPool jedisPool;
 
     private MiddleLayer middleLayer;
@@ -68,12 +74,13 @@ public class SkipNode implements SkipNodeInterface {
         this.nameID = snID.getNameID();
         this.lookupTable = lookupTable;
         this.storagePath = snID.getStoragePath();
+        this.isUsingRedis = snID.isUsingRedis();
         this.redisPoolConfig = snID.getRedisPoolConfig();
         this.redisAddress = snID.getRedisAddress();
         this.redisPort = snID.getRedisPort();
         this.redisTimeout = snID.getRedisTimeout();
         this.redisPassword = snID.getRedisPassword();
-        this.redisResult = snID.getRedisResult();
+        this.resourceQueryResult = snID.getResourceQueryResult();
         this.jedisPool = null;
         insertionLock.startInsertion();
     }
@@ -97,12 +104,12 @@ public class SkipNode implements SkipNodeInterface {
         }
     }
 
-    public String getRedisResult() { return redisResult; }
+    public String getResourceQueryResult() { return resourceQueryResult; }
 
     //TODO: skip node identity는 serializable 해야 한다.
     //TODO: identity에 redis get 값을 넣으면 되는 거 아닌가?
     //TODO: 그럼 member variable에는 redis에 접속할 수 있는 정보를 넣으면 되는건가?
-    public SkipNodeIdentity getIdentity() { return new SkipNodeIdentity(nameID, numID, address, port, version, storagePath, redisPoolConfig, redisAddress, redisPort, redisTimeout, redisPassword, redisResult);
+    public SkipNodeIdentity getIdentity() { return new SkipNodeIdentity(nameID, numID, address, port, version, storagePath, isUsingRedis, resourceQueryResult);
     }
 
     @Override
@@ -368,7 +375,7 @@ public class SkipNode implements SkipNodeInterface {
         if (numID.equals(this.numID)) {
             if (jedisPool != null) {
                 Jedis jedis = jedisPool.getResource();
-                redisResult = jedis.get(numID.toString(16));
+                resourceQueryResult = jedis.get(numID.toString(16));
                 jedis.close();
             }
             return getIdentity();
@@ -412,7 +419,7 @@ public class SkipNode implements SkipNodeInterface {
             if (level < 0) {
                 if (jedisPool != null) {
                     Jedis jedis = jedisPool.getResource();
-                    redisResult = jedis.get(numID.toString(16));
+                    resourceQueryResult = jedis.get(numID.toString(16));
                     jedis.close();
                 }
                 return getIdentity();
@@ -445,7 +452,7 @@ public class SkipNode implements SkipNodeInterface {
         if(nameID.equals(targetNameID)) {
             if (jedisPool != null) {
                 Jedis jedis = jedisPool.getResource();
-                redisResult = jedis.get((new BigInteger(targetNameID,2)).toString(16));
+                resourceQueryResult = jedis.get((new BigInteger(targetNameID,2)).toString(16));
                 jedis.close();
             }
             return new SearchResult(getIdentity());
@@ -459,7 +466,7 @@ public class SkipNode implements SkipNodeInterface {
         if(level < 0) {
             if (jedisPool != null) {
                 Jedis jedis = jedisPool.getResource();
-                redisResult = jedis.get((new BigInteger(targetNameID,2)).toString(16));
+                resourceQueryResult = jedis.get((new BigInteger(targetNameID,2)).toString(16));
                 jedis.close();
             }
             return new SearchResult(getIdentity());

@@ -9,8 +9,3 @@ numerical_id_assignment_protocol: incremental
 numerical_id_value_self_assigned: 0
 storage_type: none
 storage_path: none
-redis_pool_config: none
-redis_address: 192.168.0.4
-redis_port: 6379
-redis_password: winslab
-redis_timeout: 1000

@@ -20,6 +20,11 @@ package skipnode;
  Version : 1.0.0
  Added Jedis features as a key-value storage system.
  Modifier : Jaehee ha (jaehee.ha@kaist.ac.kr)
+
+ Rev. history : 2021-03-22
+ Version : 1.0.1
+ Modified Jedis features as a key-value storage system.
+ Modifier : Jaehee ha (jaehee.ha@kaist.ac.kr)
  */
 /* -------------------------------------------------------- */
 
@@ -42,7 +47,7 @@ import java.util.Map;
 
 public class RunClass {
 
-    public static int LEVEL = 256;
+    public static int LEVEL = 32;
     public static Jedis jedis = null;
 
     public static SkipNode createNodeTest(String fileName, int increment) {
@@ -136,6 +141,7 @@ public class RunClass {
         int redisTimeout = 0;
         String redisPassword = null;
         String redisPoolConfig = null;
+        boolean isUsingRedis = false;
 
         if (storageType.equals("none"))
         {
@@ -147,20 +153,10 @@ public class RunClass {
         }
         else if (storageType.equals("redis"))
         {
-            redisPoolConfig = yamlMaps.get("redis_pool_config").toString();
-            if (redisPoolConfig.equals("none")) {
-                redisPoolConfig = null;
-            }
-            else {
-                //TODO
-            }
-            redisAddress = yamlMaps.get("redis_address").toString();
-            redisPort = Integer.parseInt(yamlMaps.get("redis_port").toString());
-            redisTimeout = Integer.parseInt(yamlMaps.get("redis_timeout").toString());
-            redisPassword = yamlMaps.get("redis_password").toString();
+            isUsingRedis = true;
         }
 
-        SkipNodeIdentity identity = new SkipNodeIdentity(nameId, numId, address, port, redisPoolConfig, redisAddress, redisPort, redisTimeout, redisPassword, null);
+        SkipNodeIdentity identity = new SkipNodeIdentity(nameId, numId, address, port, true, null);
 
         SkipNode node = new SkipNode(identity, table);
 
@@ -189,13 +185,13 @@ public class RunClass {
             nodeList.add(createNodeTest("config2.yml",inc));
         }
 
-        System.out.println(nodeList.get(0).searchByNumID(new BigInteger(exampleHash, 16)).getRedisResult());
+        System.out.println(nodeList.get(0).searchByNumID(new BigInteger(exampleHash, 16)).getResourceQueryResult());
         System.out.println((nodeList.get(19).getNameID()));
         System.out.println((nodeList.get(0).searchByNameID("110100000")).result.getNameID());
         System.out.println((nodeList.get(0).searchByNameID("110100000")).result.getNameID().length());
         System.out.println((nodeList.get(19).searchByNameID("11010000000000000000000000000000")).result.getNameID().length());
         System.out.println((nodeList.get(0).searchByNumID(BigInteger.valueOf(3456)).getNumID().toString(16)));
         System.out.println((nodeList.get(19).getNumID().toString(16)));
-        System.out.println((nodeList.get(0).searchByNumID(new BigInteger("5e0233cfa62dce67e36240f67f90f0c472a80f199599f65e7fcf97c08eb9aaa", 16)).getRedisResult()));
+        System.out.println((nodeList.get(0).searchByNumID(new BigInteger("5e0233cfa62dce67e36240f67f90f0c472a80f199599f65e7fcf97c08eb9aaa", 16)).getResourceQueryResult()));
     }
 }

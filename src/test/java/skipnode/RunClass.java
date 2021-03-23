@@ -42,6 +42,8 @@ import java.io.Reader;
 import java.math.BigInteger;
 import java.net.Inet4Address;
 import java.net.UnknownHostException;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
 import java.util.Map;
 
@@ -136,11 +138,6 @@ public class RunClass {
 
         String storageType = yamlMaps.get("storage_type").toString();
         String storagePath = null;
-        String redisAddress = null;
-        int redisPort = 0;
-        int redisTimeout = 0;
-        String redisPassword = null;
-        String redisPoolConfig = null;
         boolean isUsingRedis = false;
 
         if (storageType.equals("none"))
@@ -156,7 +153,7 @@ public class RunClass {
             isUsingRedis = true;
         }
 
-        SkipNodeIdentity identity = new SkipNodeIdentity(nameId, numId, address, port, true, null);
+        SkipNodeIdentity identity = new SkipNodeIdentity(nameId, numId, address, port, isUsingRedis, null);
 
         SkipNode node = new SkipNode(identity, table);
 
@@ -175,24 +172,34 @@ public class RunClass {
         return createNodeTest(fileName, 0);
     }
 
-    public static void main(String[] args) {
+    public static void main(String[] args) throws NoSuchAlgorithmException {
 
         String exampleHash = "05e0233cfa62dce67e36240f67f90f0c472a80f199599f65e7fcf97c08eb9a97";
 
         ArrayList<SkipNode> nodeList = new ArrayList<>();
         nodeList.add(createNodeTest("config1.yml"));
-        for (int inc = 1 ; inc < 20 ; inc++) {
+        for (int inc = 1 ; inc < 2 ; inc++) {
             nodeList.add(createNodeTest("config2.yml",inc));
         }
 
-        System.out.println(nodeList.get(0).getResourceByNumID(new BigInteger(exampleHash, 16)));
-        System.out.println((nodeList.get(19).getNameID()));
-        System.out.println((nodeList.get(0).searchByNameID("110100000")).result.getNameID());
-        System.out.println((nodeList.get(0).searchByNameID("110100000")).result.getNameID().length());
-        System.out.println((nodeList.get(19).searchByNameID("11010000000000000000000000000000")).result.getNameID().length());
-        System.out.println((nodeList.get(0).searchByNumID(BigInteger.valueOf(3456)).getNumID().toString(16)));
-        System.out.println((nodeList.get(19).getNumID().toString(16)));
-        System.out.println(nodeList.get(10).getResourceByNumID(new BigInteger("5e0233cfa62dce67e36240f67f90f0c472a80f199599f65e7fcf97c08eb9a97", 16)));
-        System.out.println(nodeList.get(10).searchByNumID(new BigInteger("5e0233cfa62dce67e36240f67f90f0c472a80f199599f65e7fcf97c08eb9a97", 16)).getNumID().toString(16));
+//        System.out.println(nodeList.get(0).getResourceByNumID(new BigInteger(exampleHash, 16)));
+//        System.out.println((nodeList.get(19).getNameID()));
+//        System.out.println((nodeList.get(0).searchByNameID("110100000")).result.getNameID());
+//        System.out.println((nodeList.get(0).searchByNameID("110100000")).result.getNameID().length());
+//        System.out.println((nodeList.get(19).searchByNameID("11010000000000000000000000000000")).result.getNameID().length());
+//        System.out.println((nodeList.get(0).searchByNumID(BigInteger.valueOf(3456)).getNumID().toString(16)));
+//        System.out.println((nodeList.get(19).getNumID().toString(16)));
+//        System.out.println(nodeList.get(10).getResourceByNumID(new BigInteger("5e0233cfa62dce67e36240f67f90f0c472a80f199599f65e7fcf97c08eb9a97", 16)));
+//        System.out.println(nodeList.get(10).searchByNumID(new BigInteger("5e0233cfa62dce67e36240f67f90f0c472a80f199599f65e7fcf97c08eb9a97", 16)).getNumID().toString(16));
+
+        MessageDigest md = MessageDigest.getInstance("SHA-256");
+        String hello = "hello";
+        byte[] helloBytes = SkipNode.sha256(hello);
+        System.out.println(SkipNode.bytesToHex(helloBytes));
+        nodeList.get(0).storeResourceByResourceKey(SkipNode.bytesToHex(helloBytes),"hello");
+
+        System.out.println("how are you? "+ nodeList.get(0).getResourceByResourceKey(SkipNode.bytesToHex(helloBytes)));
     }
+
+
 }

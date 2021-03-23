@@ -7,6 +7,12 @@ package skipnode;
  Version : 1.0.1
  Added getResourceByNumID(), getNumIDSetByNameID(), storeResourceByNumID(), and storeResourceByNameID().
  Modifier : Jaehee ha (jaehee.ha@kaist.ac.kr)
+
+ Rev. history : 2021-03-23
+ Version : 1.0.2
+ Implemented storeResourceByNumID(), storeResourceByResourceKey(), storeResourceByNameID(), and storeResourceReplicationsByNameID().
+ Implemented handleResourceByNumID() and searchByNameIDRecursive().
+ Modifier : Jaehee ha (jaehee.ha@kaist.ac.kr)
  */
 /* -------------------------------------------------------- */
 
@@ -66,11 +72,25 @@ public interface SkipNodeInterface {
     /**
      * TODO
      * @param numID
+     * @param resourceValue
+     * @return The SkipNodeIdentity
+     */
+    SkipNodeIdentity storeResourceByNumID(BigInteger numID, String resourceValue);
+
+    /**
+     * TODO
      * @param resourceKey
      * @param resourceValue
      * @return The SkipNodeIdentity
      */
-    SkipNodeIdentity storeResourceByNumID(BigInteger numID, String resourceKey, String resourceValue);
+    SkipNodeIdentity storeResourceByResourceKey(String resourceKey, String resourceValue);
+
+    /**
+     * TODO
+     * @param resourceKey
+     * @return The resource Value
+     */
+    String getResourceByResourceKey(String resourceKey) throws NumberFormatException;
 
     /**
      * Search for the given numID
@@ -84,6 +104,16 @@ public interface SkipNodeInterface {
 
     /**
      * TODO
+     * @param numID
+     * @param isGettingResource
+     * @param isSettingResource
+     * @param resourceValue
+     * @return The resource Value
+     */
+    SkipNodeIdentity handleResourceByNumID(BigInteger numID, boolean isGettingResource, boolean isSettingResource, String resourceValue);
+
+    /**
+     * TODO
      * @param nameID
      * @return The number ID set
      */
@@ -91,12 +121,29 @@ public interface SkipNodeInterface {
 
     /**
      * TODO
-     * @param nameID
+     * @param targetNameID
      * @param resourceKey
      * @param resourceValue
      * @return The SkipNodeIdentity
      */
-    SearchResult storeResourceByNameID(String nameID, String resourceKey, String resourceValue);
+    SearchResult storeResourceByNameID(String targetNameID, String resourceKey, String resourceValue);
+
+    /**
+     * TODO
+     * @param targetNameID
+     * @param resourceKey
+     * @param resourceValue
+     * @return The SkipNodeIdentity
+     */
+    SearchResult storeResourceReplicationsByNameID(String targetNameID, String resourceKey, String resourceValue);
+
+    /**
+     * TODO
+     * @param targetNameID the target name ID.
+     * @param resourceKey
+     * @return the node with the name ID most similar to the target name ID.
+     */
+    String getResourceByNameID(String targetNameID, String resourceKey);
 
     /**
      * Search for the given nameID
@@ -110,9 +157,13 @@ public interface SkipNodeInterface {
      * Used by the `searchByNameID` method. Implements a recursive name ID search algorithm.
      * @param target the target name ID.
      * @param level the current level.
+     * @param isGettingResource
+     * @param isSettingResource
+     * @param resourceKey
+     * @param resourceValue
      * @return the identity of the node with the given name ID, or the node with the closest name ID.
      */
-    SearchResult searchByNameIDRecursive(String target, int level);
+    SearchResult searchByNameIDRecursive(String target, int level, boolean isGettingResource, boolean isSettingResource, String resourceKey, String resourceValue);
 
     /**
      * Updates the SkipNode on the left on the given level to the given SkipNodeIdentity

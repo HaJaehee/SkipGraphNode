@@ -7,5 +7,5 @@ name_id_assignment_protocol: incremental
 name_id_value_self_assigned: 0
 numerical_id_assignment_protocol: incremental
 numerical_id_value_self_assigned: 0
-storage_type: none
+storage_type: redis
 storage_path: none

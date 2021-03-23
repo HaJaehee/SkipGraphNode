@@ -1,4 +1,16 @@
 package middlelayer;
+
+/* -------------------------------------------------------- */
+/**
+ File name : MiddleLayer.java
+ Rev. history : 2021-03-23
+ Version : 1.0.2
+ Implemented handleResourceByNumID().
+ Implemented searchByNameIDRecursive().
+ Modifier : Jaehee ha (jaehee.ha@kaist.ac.kr)
+ */
+/* -------------------------------------------------------- */
+
 import lookup.LookupTable;
 import lookup.TentativeTable;
 import skipnode.SearchResult;
@@ -86,12 +98,14 @@ public class MiddleLayer {
                 // Check whether the node is available for lookups (i.e., already inserted.)
                 if(!overlay.isAvailable()) return new Response(true);
                 result = overlay.searchByNameIDRecursive(((SearchByNameIDRecursiveRequest) request).target,
-                        ((SearchByNameIDRecursiveRequest) request).level);
+                        ((SearchByNameIDRecursiveRequest) request).level, ((SearchByNameIDRecursiveRequest) request).isGettingResource,
+                        ((SearchByNameIDRecursiveRequest) request).isSettingResource, ((SearchByNameIDRecursiveRequest) request).resourceKey,
+                        ((SearchByNameIDRecursiveRequest) request).resourceValue);
                 return new SearchResultResponse(result);
             case SearchByNumID:
                 // Check whether the node is available for lookups (i.e., already inserted.)
                 if(!overlay.isAvailable()) return new Response(true);
-                identity = overlay.searchByNumID(((SearchByNumIDRequest) request).targetNumID);
+                identity = overlay.handleResourceByNumID(((SearchByNumIDRequest) request).targetNumID, ((SearchByNumIDRequest) request).isGettingResource, ((SearchByNumIDRequest) request).isSettingResource, ((SearchByNumIDRequest) request).resourceValue);
                 return new IdentityResponse(identity);
             case GetIdentity:
                 identity = overlay.getIdentity();
@@ -149,21 +163,21 @@ public class MiddleLayer {
     and can abstract away all the details, allowing for it to be used as if it was simply available locally.
      */
 
-    public SearchResult searchByNameID(String destinationAddress, int port, String nameID) {
+    public SearchResult searchByNameID(String destinationAddress, int port, String nameID, boolean isGettingResource, boolean isSettingResource, String resourceKey, String resourceValue) {
         // Send the request through the underlay
-        Response response = this.send(destinationAddress, port, new SearchByNameIDRequest(nameID));
+        Response response = this.send(destinationAddress, port, new SearchByNameIDRequest(nameID, isGettingResource, isSettingResource, resourceKey, resourceValue));
         return ((SearchResultResponse) response).result;
     }
 
-    public SearchResult searchByNameIDRecursive(String destinationAddress, int port, String target, int level) {
+    public SearchResult searchByNameIDRecursive(String destinationAddress, int port, String target, int level, boolean isGettingResource, boolean isSettingResource, String resourceKey, String resoureValue) {
         // Send the request through the underlay.
-        Response response = this.send(destinationAddress, port, new SearchByNameIDRecursiveRequest(target, level));
+        Response response = this.send(destinationAddress, port, new SearchByNameIDRecursiveRequest(target, level, isGettingResource, isSettingResource, resourceKey, resoureValue));
         return ((SearchResultResponse) response).result;
     }
 
-    public SkipNodeIdentity searchByNumID(String destinationAddress, int port, BigInteger numID) {
+    public SkipNodeIdentity handleResourceByNumID(String destinationAddress, int port, BigInteger numID, boolean isGettingResource, boolean isSettingResource, String resourceValue) {
         // Send the request through the underlay
-        Response response = this.send(destinationAddress, port, new SearchByNumIDRequest(numID));
+        Response response = this.send(destinationAddress, port, new SearchByNumIDRequest(numID, isGettingResource, isSettingResource, resourceValue));
         return ((IdentityResponse) response).identity;
     }
 

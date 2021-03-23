@@ -56,9 +56,9 @@ public class UnderlayTest {
         int remotePort = remoteUnderlay.getPort();
 
         // Check search by name ID request.
-        Assertions.assertNotNull(localUnderlay.sendMessage(remoteAddress, remotePort, new SearchByNameIDRequest("")));
+        Assertions.assertNotNull(localUnderlay.sendMessage(remoteAddress, remotePort, new SearchByNameIDRequest("", false, false, null, null)));
         // Check search by numerical ID request.
-        Assertions.assertNotNull(localUnderlay.sendMessage(remoteAddress, remotePort, new SearchByNumIDRequest(BigInteger.valueOf(0))));
+        Assertions.assertNotNull(localUnderlay.sendMessage(remoteAddress, remotePort, new SearchByNumIDRequest(BigInteger.valueOf(0), false, false, null)));
         // Check level-based search by name ID request.
         Assertions.assertNotNull(localUnderlay.sendMessage(remoteAddress, remotePort, new NameIDLevelSearchRequest(0, 0, "")));
         // Check left/right update requests.

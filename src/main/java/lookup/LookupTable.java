@@ -3,6 +3,7 @@ package lookup;
 import skipnode.SkipNodeIdentity;
 
 import java.math.BigInteger;
+import java.util.ArrayList;
 import java.util.List;
 
 public interface LookupTable {
@@ -109,4 +110,13 @@ public interface LookupTable {
      */
     void initializeTable(SkipNodeIdentity owner, TentativeTable tentativeTable);
 
+    /**
+     *
+     * @param id
+     */
+    void addNodeIntoListAtHighestLevel (SkipNodeIdentity id);
+
+    void setNodeListAtHighestLevel(ArrayList<SkipNodeIdentity> list);
+
+    ArrayList<SkipNodeIdentity> getNodeListAtHighestLevel ();
 }

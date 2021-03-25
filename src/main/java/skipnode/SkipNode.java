@@ -27,12 +27,14 @@ package skipnode;
  Added bytesToHex() and sha256().
  Modifier : Jaehee ha (jaehee.ha@kaist.ac.kr)
 
- //TODO get a set by searching common name ID prefix
- //TODO get a num ID having minimum name ID body having common name ID prefix. e.g., prefix: 1011, body: 0000
- //     hint: go left node recursively
- //TODO store resource by num ID or resource key
- //TODO remove get resource by name ID
+ Rev. history : 2021-03-25
+ Version : 1.0.3
+ Added getNodeListAtHighestLevel(), getFirstNodeAtHighestLevel(), and getNodeListByNameID().
+ Added getLeftNodeAndAddNodeAtHighestLevel() and getRightNodeAndAddNodeAtHighestLevel().
+ Modifier : Jaehee ha (jaehee.ha@kaist.ac.kr)
+
  //TODO replicate resource into nodes having common name ID prefix
+ //TODO Update node list at highest level is required.
  */
 /* -------------------------------------------------------- */
 
@@ -149,6 +151,7 @@ public class SkipNode implements SkipNodeInterface {
         // Trivially insert the first node of the skip graph.
         if(introducerAddress == null) {
             logger.debug(getNumID().toString(16) + " was inserted!");
+            lookupTable.addNodeIntoListAtHighestLevel(getIdentity());
             inserted = true;
             insertionLock.endInsertion();
             return;
@@ -201,6 +204,10 @@ public class SkipNode implements SkipNodeInterface {
         // Complete the insertion.
         inserted = true;
         logger.debug(getNumID().toString(16) + " was inserted!");
+        // TODO 아래 이거 너무 비효율적인데.
+        lookupTable.setNodeListAtHighestLevel(getNodeListFromNeighborAtHighestLevel());
+        lookupTable.addNodeIntoListAtHighestLevel(getIdentity());
+        addNodeIntoListAtHighestLevelRecursively();
         insertionLock.endInsertion();
     }
 
@@ -381,6 +388,28 @@ public class SkipNode implements SkipNodeInterface {
 
     /**
      * TODO
+     *
+     * @param resourceKey
+     * @return The string
+     */
+    @Override
+    public String getResource(String resourceKey) {
+        return null;
+    }
+
+    /**
+     * TODO
+     *
+     * @param resourceKey
+     * @param resourceValue
+     */
+    @Override
+    public void storeResource(String resourceKey, String resourceValue) {
+
+    }
+
+    /**
+     * TODO
      * @param numID
      * @return The resource Value
      */
@@ -531,8 +560,26 @@ public class SkipNode implements SkipNodeInterface {
      * @return The number ID set
      */
     @Override
-    public ArrayList<SearchResult> getNumIDSetByNameID(String targetNameID){
-        return null;
+    public ArrayList<SkipNodeIdentity> getNodeListByNameID(String targetNameID){
+        SearchResult targetResult = searchByNameID(targetNameID);
+        ArrayList<SkipNodeIdentity> cumulativeNodeList = new ArrayList<SkipNodeIdentity>();
+        int highestLevel = this.lookupTable.getNumLevels() - 1 ;
+
+        SkipNodeIdentity left = middleLayer.getLeftNode(targetResult.result.getAddress(), targetResult.result.getPort(), highestLevel);
+        while (!left.equals(LookupTable.EMPTY_NODE)) {
+            cumulativeNodeList.add(0, left);
+            left = middleLayer.getLeftNode(left.getAddress(), left.getPort(), highestLevel);
+        }
+
+        cumulativeNodeList.add(getIdentity());
+
+        SkipNodeIdentity right = middleLayer.getRightNode(targetResult.result.getAddress(), targetResult.result.getPort(), highestLevel);
+        while (!right.equals(LookupTable.EMPTY_NODE)) {
+            cumulativeNodeList.add(right);
+            right = middleLayer.getRightNode(right.getAddress(), right.getPort(), highestLevel);
+        }
+
+        return cumulativeNodeList;
     }
 
     private SearchResult handleResourceByNameID(String targetNameID, boolean isGettingResource, boolean isSettingResource, String resourceKey, String resourceValue) {
@@ -680,6 +727,86 @@ public class SkipNode implements SkipNodeInterface {
         }
     }
 
+
+
+    @Override
+    public ArrayList<SkipNodeIdentity> getNodeListAtHighestLevel() {
+        return lookupTable.getNodeListAtHighestLevel();
+    }
+
+    public void addNodeIntoListAtHighestLevelRecursively() {
+        int highestLevel = this.lookupTable.getNumLevels() - 1 ;
+
+        SkipNodeIdentity left = getLeftNode(highestLevel);
+        while (!left.equals(LookupTable.EMPTY_NODE)) {
+            left = middleLayer.getLeftNodeAndAddNodeAtHighestLevel(left.getAddress(), left.getPort(), highestLevel, getIdentity());
+        }
+
+        SkipNodeIdentity right = getRightNode(highestLevel);
+        while (!right.equals(LookupTable.EMPTY_NODE)) {
+            right = middleLayer.getRightNodeAndAddNodeAtHighestLevel(right.getAddress(), right.getPort(), highestLevel, getIdentity());
+        }
+    }
+
+    public ArrayList<SkipNodeIdentity> getNodeListFromNeighborAtHighestLevel() {
+        ArrayList<SkipNodeIdentity> nodeList = new ArrayList<SkipNodeIdentity>();
+        int highestLevel = this.lookupTable.getNumLevels() - 1 ;
+
+        SkipNodeIdentity left = getLeftNode(highestLevel);
+        SkipNodeIdentity right = getRightNode(highestLevel);
+        if (!left.equals(LookupTable.EMPTY_NODE)) {
+            nodeList = middleLayer.getNodeListAtHighestLevel(left.getAddress(), left.getPort());
+        }
+        else if (!right.equals(LookupTable.EMPTY_NODE)) {
+            nodeList = middleLayer.getNodeListAtHighestLevel(right.getAddress(), right.getPort());
+        }
+        return nodeList;
+    }
+    /**
+     * TODO
+     * @return The arraylist of nodes at highest level.
+     */
+    @Override
+    public ArrayList<SkipNodeIdentity> getNodeListAtHighestLevelRecursively() {
+
+        ArrayList<SkipNodeIdentity> cumulativeNodeList = new ArrayList<SkipNodeIdentity>();
+        int highestLevel = this.lookupTable.getNumLevels() - 1 ;
+
+        SkipNodeIdentity left = getLeftNode(highestLevel);
+        while (!left.equals(LookupTable.EMPTY_NODE)) {
+            cumulativeNodeList.add(0, left);
+            left = middleLayer.getLeftNode(left.getAddress(), left.getPort(), highestLevel);
+        }
+
+        cumulativeNodeList.add(getIdentity());
+
+        SkipNodeIdentity right = getRightNode(highestLevel);
+        while (!right.equals(LookupTable.EMPTY_NODE)) {
+            cumulativeNodeList.add(right);
+            right = middleLayer.getRightNode(right.getAddress(), right.getPort(), highestLevel);
+        }
+
+        return cumulativeNodeList;
+    }
+
+    /**
+     * TODO
+     * @return The SkipNodeIdentity.
+     */
+    @Override
+    public SkipNodeIdentity getFirstNodeAtHighestLevel() {
+        int highestLevel = this.lookupTable.getNumLevels() - 1 ;
+
+        SkipNodeIdentity left = getLeftNode(highestLevel);
+        SkipNodeIdentity buffer = getIdentity();
+        while (!left.equals(LookupTable.EMPTY_NODE)) {
+            buffer = left;
+            left = middleLayer.getLeftNode(left.getAddress(), left.getPort(), highestLevel);
+        }
+
+        return buffer;
+    }
+
     @Override
     public SkipNodeIdentity updateLeftNode(SkipNodeIdentity snId, int level) {
         return lookupTable.updateLeft(snId, level);
@@ -692,6 +819,12 @@ public class SkipNode implements SkipNodeInterface {
 
 
     @Override
+    public SkipNodeIdentity getRightNodeAndAddNodeAtHighestLevel(int level, SkipNodeIdentity newNodeId) {
+        lookupTable.addNodeIntoListAtHighestLevel(newNodeId);
+        return getRightNode(level);
+    }
+
+    @Override
     public SkipNodeIdentity getRightNode(int level) {
         logger.debug(getNumID().toString(16) + " has received a getRightNode request.");
         SkipNodeIdentity right = lookupTable.getRight(level);
@@ -699,6 +832,12 @@ public class SkipNode implements SkipNodeInterface {
                 : middleLayer.getIdentity(right.getAddress(), right.getPort());
         logger.debug(getNumID().toString(16) + " is returning a getRightNode response.");
         return r;
+    }
+
+    @Override
+    public SkipNodeIdentity getLeftNodeAndAddNodeAtHighestLevel(int level, SkipNodeIdentity newNodeId) {
+        lookupTable.addNodeIntoListAtHighestLevel(newNodeId);
+        return getLeftNode(level);
     }
 
     @Override

@@ -22,6 +22,8 @@ public class ConcurrentLookupTable implements LookupTable {
      */
     private ArrayList<SkipNodeIdentity> nodes;
 
+    private ArrayList<SkipNodeIdentity> nodesAtHighestLevel;
+
     private enum direction {
         LEFT,
         RIGHT
@@ -34,6 +36,26 @@ public class ConcurrentLookupTable implements LookupTable {
         for(int i = 0; i < 2 * numLevels; i++){
             nodes.add(i, LookupTable.EMPTY_NODE);
         }
+        nodesAtHighestLevel = new ArrayList<SkipNodeIdentity>();
+    }
+
+    /**
+     *
+     * @param id
+     */
+    @Override
+    public void addNodeIntoListAtHighestLevel (SkipNodeIdentity id) {
+        nodesAtHighestLevel.add(id);
+    }
+
+    @Override
+    public void setNodeListAtHighestLevel (ArrayList<SkipNodeIdentity> list) {
+        this.nodesAtHighestLevel = list;
+    }
+
+    @Override
+    public ArrayList<SkipNodeIdentity> getNodeListAtHighestLevel () {
+        return nodesAtHighestLevel;
     }
 
     @Override
@@ -80,19 +102,25 @@ public class ConcurrentLookupTable implements LookupTable {
         return node;
     }
 
-    @Override
+    // TODO SOMETHING WEIRD
     public List<SkipNodeIdentity> getRights(int level) {
         List<SkipNodeIdentity> ls = new ArrayList<>(1);
         SkipNodeIdentity id = getRight(level);
-        if(!id.equals(LookupTable.EMPTY_NODE)) ls.add(id);
+        if(!id.equals(LookupTable.EMPTY_NODE)) {
+            ls.add(id);
+        }
         return ls;
     }
 
-    @Override
+
+    // TODO SOMETHING WEIRD
     public List<SkipNodeIdentity> getLefts(int level) {
         List<SkipNodeIdentity> ls = new ArrayList<>(1);
         SkipNodeIdentity id = getLeft(level);
-        if(!id.equals(LookupTable.EMPTY_NODE)) ls.add(id);
+        if(!id.equals(LookupTable.EMPTY_NODE))
+        {
+            ls.add(id);
+        }
         return ls;
     }
 

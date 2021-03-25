@@ -13,6 +13,11 @@ package skipnode;
  Implemented storeResourceByNumID(), storeResourceByResourceKey(), storeResourceByNameID(), and storeResourceReplicationsByNameID().
  Implemented handleResourceByNumID() and searchByNameIDRecursive().
  Modifier : Jaehee ha (jaehee.ha@kaist.ac.kr)
+
+ Rev. history : 2021-03-25
+ Version : 1.0.3
+ Added getNodeListAtHighestLevel(), getFirstNodeAtHighestLevel(), and getNodeListByNameID().
+ Modifier : Jaehee ha (jaehee.ha@kaist.ac.kr)
  */
 /* -------------------------------------------------------- */
 
@@ -61,6 +66,21 @@ public interface SkipNodeInterface {
      * @return True is successful, false otherwise
      */
     boolean delete();
+
+    /**
+     * TODO
+     * @param resourceKey
+     * @return The string
+     */
+    String getResource(String resourceKey);
+
+    /**
+     * TODO
+     * @param resourceKey
+     * @param resourceValue
+     */
+    void storeResource(String resourceKey, String resourceValue);
+
 
     /**
      * TODO
@@ -114,10 +134,10 @@ public interface SkipNodeInterface {
 
     /**
      * TODO
-     * @param nameID
+     * @param targetNameID
      * @return The number ID set
      */
-    ArrayList<SearchResult> getNumIDSetByNameID(String nameID);
+    ArrayList<SkipNodeIdentity> getNodeListByNameID(String targetNameID);
 
     /**
      * TODO
@@ -166,6 +186,21 @@ public interface SkipNodeInterface {
     SearchResult searchByNameIDRecursive(String target, int level, boolean isGettingResource, boolean isSettingResource, String resourceKey, String resourceValue);
 
     /**
+     * TODO
+     * @return The arraylist of nodes at highest level.
+     */
+    ArrayList<SkipNodeIdentity> getNodeListAtHighestLevel();
+
+    ArrayList<SkipNodeIdentity> getNodeListAtHighestLevelRecursively();
+
+    /**
+     * TODO
+     * @return The SkipNodeIdentity.
+     */
+    SkipNodeIdentity getFirstNodeAtHighestLevel();
+
+
+    /**
      * Updates the SkipNode on the left on the given level to the given SkipNodeIdentity
      * @param snId The new SkipNodeIdentity to be placed in the given level
      * @param level The level to place the given SkipNodeIdentity
@@ -187,12 +222,16 @@ public interface SkipNodeInterface {
      */
     SkipNodeIdentity getIdentity();
 
+    SkipNodeIdentity getRightNodeAndAddNodeAtHighestLevel(int level, SkipNodeIdentity newNodeId);
+
     /**
      * Returns the right neighbor of the node at the given level.
      * @param level the level of the right neighbor.
      * @return the right neighbor at the given level.
      */
     SkipNodeIdentity getRightNode(int level);
+
+    SkipNodeIdentity getLeftNodeAndAddNodeAtHighestLevel(int level, SkipNodeIdentity newNodeId);
 
     /**
      * Returns the left neighbor of the node at the given level.

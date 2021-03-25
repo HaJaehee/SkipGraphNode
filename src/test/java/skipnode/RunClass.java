@@ -42,7 +42,6 @@ import java.io.Reader;
 import java.math.BigInteger;
 import java.net.Inet4Address;
 import java.net.UnknownHostException;
-import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
 import java.util.Map;
@@ -178,8 +177,9 @@ public class RunClass {
 
         ArrayList<SkipNode> nodeList = new ArrayList<>();
         nodeList.add(createNodeTest("config1.yml"));
-        for (int inc = 1 ; inc < 2 ; inc++) {
+        for (int inc = 1 ; inc < 20 ; inc++) {
             nodeList.add(createNodeTest("config2.yml",inc));
+            System.out.println(nodeList.get(inc).getNodeListAtHighestLevel().size());
         }
 
 //        System.out.println(nodeList.get(0).getResourceByNumID(new BigInteger(exampleHash, 16)));
@@ -192,14 +192,23 @@ public class RunClass {
 //        System.out.println(nodeList.get(10).getResourceByNumID(new BigInteger("5e0233cfa62dce67e36240f67f90f0c472a80f199599f65e7fcf97c08eb9a97", 16)));
 //        System.out.println(nodeList.get(10).searchByNumID(new BigInteger("5e0233cfa62dce67e36240f67f90f0c472a80f199599f65e7fcf97c08eb9a97", 16)).getNumID().toString(16));
 
-        MessageDigest md = MessageDigest.getInstance("SHA-256");
-        String hello = "hello";
-        byte[] helloBytes = SkipNode.sha256(hello);
-        System.out.println(SkipNode.bytesToHex(helloBytes));
-        nodeList.get(0).storeResourceByResourceKey(SkipNode.bytesToHex(helloBytes),"hello");
+//        MessageDigest md = MessageDigest.getInstance("SHA-256");
+//        String hello = "hello";
+//        byte[] helloBytes = SkipNode.sha256(hello);
+//        System.out.println(SkipNode.bytesToHex(helloBytes));
+//        nodeList.get(0).storeResourceByResourceKey(SkipNode.bytesToHex(helloBytes),"hello");
+//
+//        System.out.println("how are you? "+ nodeList.get(0).getResourceByResourceKey(SkipNode.bytesToHex(helloBytes)));
 
-        System.out.println("how are you? "+ nodeList.get(0).getResourceByResourceKey(SkipNode.bytesToHex(helloBytes)));
+        ArrayList<SkipNodeIdentity> list = nodeList.get(10).getNodeListByNameID("00000101111000000010001100111100");
+        list = nodeList.get(19).getNodeListAtHighestLevel();
+        for (SkipNodeIdentity s: list) {
+            System.out.println(s.getNameID());
+        }
+
+        System.out.println(nodeList.get(19).getFirstNodeAtHighestLevel().getNumID().toString(16));
+        for (SkipNode s : nodeList) {
+            System.out.println(s.getNodeListAtHighestLevel().size());
+        }
     }
-
-
 }

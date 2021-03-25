@@ -8,6 +8,12 @@ package middlelayer;
  Implemented handleResourceByNumID().
  Implemented searchByNameIDRecursive().
  Modifier : Jaehee ha (jaehee.ha@kaist.ac.kr)
+
+ Rev. history : 2021-03-25
+ Version : 1.0.3
+ Added getNodeListAtHighestLevel(), getFirstNodeAtHighestLevel(), and getNodeListByNameID().
+ Added getLeftNodeAndAddNodeAtHighestLevel() and getRightNodeAndAddNodeAtHighestLevel().
+ Modifier : Jaehee ha (jaehee.ha@kaist.ac.kr)
  */
 /* -------------------------------------------------------- */
 
@@ -22,6 +28,7 @@ import underlay.packets.requests.*;
 import underlay.packets.responses.*;
 
 import java.math.BigInteger;
+import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -110,6 +117,8 @@ public class MiddleLayer {
             case GetIdentity:
                 identity = overlay.getIdentity();
                 return new IdentityResponse(identity);
+            case GetNodeListAtHighestLevel:
+                return new NodeListResponse(overlay.getNodeListAtHighestLevel());
             case AcquireLock:
                 return new BooleanResponse(overlay.tryAcquire(((AcquireLockRequest) request).requester, ((AcquireLockRequest) request).version));
             case ReleaseLock:
@@ -137,6 +146,18 @@ public class MiddleLayer {
                 if(overlay.isLocked() && !overlay.isLockedBy(request.senderAddress, request.senderPort))
                     return new Response(true);
                 identity = overlay.getLeftNode(((GetLeftNodeRequest) request).level);
+                return new IdentityResponse(identity);
+            case GetRightNodeAndAddNodeAtHighestLevel:
+                // Can only be invoked when unlocked or by the lock owner.
+                if(overlay.isLocked() && !overlay.isLockedBy(request.senderAddress, request.senderPort))
+                    return new Response(true);
+                identity = overlay.getRightNodeAndAddNodeAtHighestLevel(((GetRightNodeAndAddNodeAtHighestLevelRequest) request).level, ((GetRightNodeAndAddNodeAtHighestLevelRequest) request).snId);
+                return new IdentityResponse(identity);
+            case GetLeftNodeAndAddNodeAtHighestLevel:
+                // Can only be invoked when unlocked or by the lock owner.
+                if(overlay.isLocked() && !overlay.isLockedBy(request.senderAddress, request.senderPort))
+                    return new Response(true);
+                identity = overlay.getLeftNodeAndAddNodeAtHighestLevel(((GetLeftNodeAndAddNodeAtHighestLevelRequest) request).level, ((GetLeftNodeAndAddNodeAtHighestLevelRequest) request).snId);
                 return new IdentityResponse(identity);
             case FindLadder:
                 // Can only be invoked when unlocked or by the lock owner.
@@ -209,6 +230,11 @@ public class MiddleLayer {
         return ((IdentityResponse) r).identity;
     }
 
+    public ArrayList<SkipNodeIdentity> getNodeListAtHighestLevel(String destinationAddress, int port) {
+        Response r = send(destinationAddress, port, new GetNodeListRequest());
+        return ((NodeListResponse) r).nodeList;
+    }
+
     public SkipNodeIdentity getLeftNode(String destinationAddress, int port, int level) {
         return getLeftNode(true, destinationAddress, port, level);
     }
@@ -228,6 +254,17 @@ public class MiddleLayer {
         return ((IdentityResponse) r).identity;
     }
 
+    public SkipNodeIdentity getLeftNodeAndAddNodeAtHighestLevel(String destinationAddress, int port, int level, SkipNodeIdentity snId) {
+        // Send the request through the underlay
+        GetLeftNodeAndAddNodeAtHighestLevelRequest req = new GetLeftNodeAndAddNodeAtHighestLevelRequest(level, snId);
+        req.backoff = true;
+        Response r = send(destinationAddress, port, req);
+        // If the client has returned a locked response (i.e., has indicated that we should try again), return
+        // an invalid skip node identity.
+        if(r.locked) return LookupTable.INVALID_NODE;
+        return ((IdentityResponse) r).identity;
+    }
+
     public SkipNodeIdentity getRightNode(boolean backoff, String destinationAddress, int port, int level) {
         // Send the request through the underlay
         GetRightNodeRequest req = new GetRightNodeRequest(level);
@@ -238,6 +275,19 @@ public class MiddleLayer {
         if(r.locked) return LookupTable.INVALID_NODE;
         return ((IdentityResponse) r).identity;
     }
+
+
+    public SkipNodeIdentity getRightNodeAndAddNodeAtHighestLevel(String destinationAddress, int port, int level, SkipNodeIdentity snId) {
+        // Send the request through the underlay
+        GetRightNodeAndAddNodeAtHighestLevelRequest req = new GetRightNodeAndAddNodeAtHighestLevelRequest(level, snId);
+        req.backoff = true;
+        Response r = send(destinationAddress, port, req);
+        // If the client has returned a locked response (i.e., has indicated that we should try again), return
+        // an invalid skip node identity.
+        if(r.locked) return LookupTable.INVALID_NODE;
+        return ((IdentityResponse) r).identity;
+    }
+
 
     public TentativeTable acquireNeighbors(String destinationAddress, int port, SkipNodeIdentity newNodeID, int level) {
         // Send the request through the underlay

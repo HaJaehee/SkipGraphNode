@@ -11,7 +11,7 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.stream.Collectors;
 
 /**
- * ConcurrentLookupTable is a backup table that supports concurrent calls
+ * ConcurrentBackupTable is a backup table that supports concurrent calls
  */
 public class ConcurrentBackupTable implements LookupTable {
 
@@ -71,6 +71,7 @@ public class ConcurrentBackupTable implements LookupTable {
         lock.readLock().unlock();
         return result;
     }
+
 
     @Override
     public List<SkipNodeIdentity> getLefts(int level) {
@@ -265,6 +266,24 @@ public class ConcurrentBackupTable implements LookupTable {
             Collections.sort(nodes.get(rIndex));
         }
         lock.writeLock().unlock();
+    }
+
+    /**
+     * @param id
+     */
+    @Override
+    public void addNodeIntoListAtHighestLevel(SkipNodeIdentity id) {
+
+    }
+
+    @Override
+    public void setNodeListAtHighestLevel(ArrayList<SkipNodeIdentity> list) {
+
+    }
+
+    @Override
+    public ArrayList<SkipNodeIdentity> getNodeListAtHighestLevel() {
+        return null;
     }
 
     @Override

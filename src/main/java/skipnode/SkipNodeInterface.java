@@ -191,8 +191,6 @@ public interface SkipNodeInterface {
      */
     ArrayList<SkipNodeIdentity> getNodeListAtHighestLevel();
 
-    ArrayList<SkipNodeIdentity> getNodeListAtHighestLevelRecursively();
-
     /**
      * TODO
      * @return The SkipNodeIdentity.

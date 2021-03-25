@@ -31,10 +31,11 @@ package skipnode;
  Version : 1.0.3
  Added getNodeListAtHighestLevel(), getFirstNodeAtHighestLevel(), and getNodeListByNameID().
  Added getLeftNodeAndAddNodeAtHighestLevel() and getRightNodeAndAddNodeAtHighestLevel().
+ Implemented getResource() and storeResource().
  Modifier : Jaehee ha (jaehee.ha@kaist.ac.kr)
 
  //TODO replicate resource into nodes having common name ID prefix
- //TODO Update node list at highest level is required.
+ //TODO Are we need to delete a resource?
  */
 /* -------------------------------------------------------- */
 
@@ -123,10 +124,6 @@ public class SkipNode implements SkipNodeInterface {
         }
     }
 
-    private void setResourceValueByKey(String resourceKey, String resourceQueryResult) {
-        this.resourceQueryResult = resourceQueryResult;
-    }
-
     //TODO: skip node identity는 serializable 해야 한다.
     //TODO: identity에 redis get 값을 넣으면 되는 거 아닌가?
     //TODO: 그럼 member variable에는 redis에 접속할 수 있는 정보를 넣으면 되는건가?
@@ -204,7 +201,7 @@ public class SkipNode implements SkipNodeInterface {
         // Complete the insertion.
         inserted = true;
         logger.debug(getNumID().toString(16) + " was inserted!");
-        // TODO 아래 이거 너무 비효율적인데.
+
         lookupTable.setNodeListAtHighestLevel(getNodeListFromNeighborAtHighestLevel());
         lookupTable.addNodeIntoListAtHighestLevel(getIdentity());
         addNodeIntoListAtHighestLevelRecursively();
@@ -387,31 +384,31 @@ public class SkipNode implements SkipNodeInterface {
     }
 
     /**
-     * TODO
-     *
+     * Get a resource from Redis system by using a resource key.
      * @param resourceKey
-     * @return The string
+     * @return The string is the member variable resourceQueryResult of this node.
      */
     @Override
     public String getResource(String resourceKey) {
-        return null;
+        handleJedisWithResourceKey(resourceKey, true, false, null);
+        return resourceQueryResult;
     }
 
     /**
-     * TODO
-     *
+     * Store a resource into Redis system by using a resource key and a resource value.
      * @param resourceKey
      * @param resourceValue
      */
     @Override
     public void storeResource(String resourceKey, String resourceValue) {
-
+        handleJedisWithResourceKey(resourceKey, false, true, resourceValue);
     }
 
     /**
-     * TODO
+     * Get a resource by using a number ID from the node that have numerically closest number ID.
+     * The resource stored in the Redis system MUST have same key with the number ID.
      * @param numID
-     * @return The resource Value
+     * @return The resource value
      */
     @Override
     public String getResourceByNumID(BigInteger numID) {
@@ -419,9 +416,10 @@ public class SkipNode implements SkipNodeInterface {
     }
 
     /**
-     * TODO
+     * Get a resource by using a resource key from the node that have the numerically closest number ID.
+     * The resource stored in the Redis system MUST have same key with the resource key.
      * @param resourceKey
-     * @return The resource Value
+     * @return The resource value
      */
     @Override
     public String getResourceByResourceKey(String resourceKey) throws NumberFormatException{
@@ -430,12 +428,13 @@ public class SkipNode implements SkipNodeInterface {
     }
 
     /**
-     * TODO
+     * Handle resource by a number ID (or a resource key).
+     * Find node which have the numerically closest number ID from the parameter number ID.
      * @param numID
      * @param isGettingResource
      * @param isSettingResource
      * @param resourceValue
-     * @return The resource Value
+     * @return SkipNodeIdentity
      */
     public SkipNodeIdentity handleResourceByNumID(BigInteger numID, boolean isGettingResource, boolean isSettingResource, String resourceValue) {
         // If this is the node the search request is looking for, return its identity
@@ -491,6 +490,13 @@ public class SkipNode implements SkipNodeInterface {
         }
     }
 
+    /**
+     * Handle the Redis system by facilitating the Jedis library with a number ID.
+     * @param numID
+     * @param isGettingResource
+     * @param isSettingResource
+     * @param resourceValue
+     */
     private void handleJedisWithNumID (BigInteger numID, boolean isGettingResource, boolean isSettingResource, String resourceValue) {
         if (isGettingResource && isUsingRedis) {
             setJedisPool();
@@ -508,10 +514,21 @@ public class SkipNode implements SkipNodeInterface {
     }
 
     /**
-     * TODO
+     * Handle the Redis system by facilitating the Jedis library with a resource key.
+     * @param resourceKey
+     * @param isGettingResource
+     * @param isSettingResource
+     * @param resourceValue
+     */
+    private void handleJedisWithResourceKey (String resourceKey, boolean isGettingResource, boolean isSettingResource, String resourceValue) {
+        handleResourceByNumID(new BigInteger(resourceKey, 16),isGettingResource,isSettingResource,resourceValue);
+    }
+
+    /**
+     * Store a resource by using a number ID into the node that have the numerically closest number ID.
      * @param numID
      * @param resourceValue
-     * @return The SkipNodeIdentity
+     * @return The SkipNodeIdentity of the node which have the resource.
      */
     @Override
     public SkipNodeIdentity storeResourceByNumID(BigInteger numID, String resourceValue) throws NumberFormatException{
@@ -519,10 +536,10 @@ public class SkipNode implements SkipNodeInterface {
     }
 
     /**
-     * TODO
+     * Store a resource by using a resource key into the node that have the numerically closest number ID.
      * @param resourceKey
      * @param resourceValue
-     * @return The SkipNodeIdentity
+     * @return The SkipNodeIdentity of the node which have the resource.
      */
     @Override
     public SkipNodeIdentity storeResourceByResourceKey(String resourceKey, String resourceValue) throws NumberFormatException{
@@ -555,9 +572,9 @@ public class SkipNode implements SkipNodeInterface {
     }
 
     /**
-     * TODO
+     * Get a node list in which nodes have longest common prefix at the highest level.
      * @param targetNameID
-     * @return The number ID set
+     * @return The list of SkipNodeIdentity
      */
     @Override
     public ArrayList<SkipNodeIdentity> getNodeListByNameID(String targetNameID){
@@ -603,7 +620,7 @@ public class SkipNode implements SkipNodeInterface {
     }
 
     /**
-     * TODO
+     * Store a resource by using a name ID into the node that have the longest common prefix name ID.
      * @param targetNameID
      * @param resourceKey
      * @param resourceValue
@@ -611,8 +628,7 @@ public class SkipNode implements SkipNodeInterface {
      */
     @Override
     public SearchResult storeResourceByNameID(String targetNameID, String resourceKey, String resourceValue){
-        handleResourceByNameID(targetNameID, false, true, resourceKey, resourceValue);
-        return null;
+        return handleResourceByNameID(targetNameID, false, true, resourceKey, resourceValue);
     }
 
     /**
@@ -640,7 +656,7 @@ public class SkipNode implements SkipNodeInterface {
     }
 
     /**
-     * TODO
+     * Get a resource by using a name ID from the node that have the longest common prefix name ID, and resource key.
      * @param targetNameID the target name ID.
      * @return the node with the name ID most similar to the target name ID.
      */
@@ -728,13 +744,12 @@ public class SkipNode implements SkipNodeInterface {
     }
 
 
-
     @Override
     public ArrayList<SkipNodeIdentity> getNodeListAtHighestLevel() {
         return lookupTable.getNodeListAtHighestLevel();
     }
 
-    public void addNodeIntoListAtHighestLevelRecursively() {
+    private void addNodeIntoListAtHighestLevelRecursively() {
         int highestLevel = this.lookupTable.getNumLevels() - 1 ;
 
         SkipNodeIdentity left = getLeftNode(highestLevel);
@@ -748,7 +763,7 @@ public class SkipNode implements SkipNodeInterface {
         }
     }
 
-    public ArrayList<SkipNodeIdentity> getNodeListFromNeighborAtHighestLevel() {
+    private ArrayList<SkipNodeIdentity> getNodeListFromNeighborAtHighestLevel() {
         ArrayList<SkipNodeIdentity> nodeList = new ArrayList<SkipNodeIdentity>();
         int highestLevel = this.lookupTable.getNumLevels() - 1 ;
 
@@ -763,11 +778,11 @@ public class SkipNode implements SkipNodeInterface {
         return nodeList;
     }
     /**
-     * TODO
+     * Get a node list at highest level recursively.
+     * This is not efficient method.
      * @return The arraylist of nodes at highest level.
      */
-    @Override
-    public ArrayList<SkipNodeIdentity> getNodeListAtHighestLevelRecursively() {
+    private ArrayList<SkipNodeIdentity> getNodeListAtHighestLevelRecursively() {
 
         ArrayList<SkipNodeIdentity> cumulativeNodeList = new ArrayList<SkipNodeIdentity>();
         int highestLevel = this.lookupTable.getNumLevels() - 1 ;

@@ -2,7 +2,7 @@ package underlay.packets.responses;
 
 /* -------------------------------------------------------- */
 /**
- File name : IdentityListResponse.java
+ File name : NodeListResponse.java
  Creation Date : 2021-03-25
  Version : 1.0.3
  Author : Jaehee ha (jaehee.ha@kaist.ac.kr)

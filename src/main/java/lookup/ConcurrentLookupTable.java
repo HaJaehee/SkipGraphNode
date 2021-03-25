@@ -1,5 +1,16 @@
 package lookup;
 
+/* -------------------------------------------------------- */
+/**
+ File name : ConcurrentLookupTable.java
+ Rev. history : 2021-03-25
+ Version : 1.0.3
+ Added nodesAtHighestLevel.
+ Modifier : Jaehee ha (jaehee.ha@kaist.ac.kr)
+ */
+/* -------------------------------------------------------- */
+
+
 import skipnode.SkipNodeIdentity;
 
 import java.math.BigInteger;

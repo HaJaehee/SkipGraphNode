@@ -3,15 +3,14 @@ package skipnode;
 import lookup.LookupTable;
 import middlelayer.MiddleLayer;
 import misc.LocalSkipGraph;
-import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 import underlay.Underlay;
 
+import java.math.BigInteger;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import java.util.Random;
 import java.util.stream.Collectors;
 
 /**
@@ -109,7 +108,7 @@ class SkipNodeTest {
             final SkipNode introducer = g.getNodes().get(i-1);
             final SkipNode node = g.getNodes().get(i);
             insertionThreads[i-1] = new Thread(() -> {
-                node.insert(introducer.getIdentity().getAddress(), introducer.getIdentity().getPort());
+                node.insert(introducer.getIdentity(null).getAddress(), introducer.getIdentity(null).getPort());
             });
         }
 
@@ -125,7 +124,7 @@ class SkipNodeTest {
         }
         // First, check the correctness and consistency of the lookup tables.
         // Create a map of num ids to their corresponding lookup tables.
-        Map<Integer, LookupTable> tableMap = g.getNodes().stream()
+        Map<BigInteger, LookupTable> tableMap = g.getNodes().stream()
                 .collect(Collectors.toMap(SkipNode::getNumID, SkipNode::getLookupTable));
         // Check the correctness & consistency of the tables.
         for(SkipNode n : g.getNodes()) {
@@ -135,7 +134,7 @@ class SkipNodeTest {
         System.out.println("INSERTIONS COMPLETE.");
         StringBuilder sb = new StringBuilder();
         for(SkipNode nd : g.getNodes()){
-            sb.append(nd.getIdentity() + " 's Backup Table\n");
+            sb.append(nd.getIdentity(null) + " 's Backup Table\n");
 //            System.out.println(nd.getIdentity() + " 's Backup Table");
 //            System.out.println(nd.getLookupTable());
             sb.append(nd.getLookupTable()+"\n");
@@ -143,7 +142,7 @@ class SkipNodeTest {
         final String excp = sb.toString();
         sb = new StringBuilder();
         for(SkipNode nd : g.getNodes()){
-            sb.append(nd.getIdentity() + " 's Backup Table AFTER insertion\n");
+            sb.append(nd.getIdentity(null) + " 's Backup Table AFTER insertion\n");
 //            System.out.println(nd.getIdentity() + " 's Backup Table");
 //            System.out.println(nd.getLookupTable());
             sb.append(nd.getLookupTable()+"\n");
@@ -209,7 +208,7 @@ class SkipNodeTest {
             final SkipNode introducer = g.getNodes().get((int)(Math.random() * i));
             final SkipNode node = g.getNodes().get(i);
             threads[i-1] = new Thread(() -> {
-                node.insert(introducer.getIdentity().getAddress(), introducer.getIdentity().getPort());
+                node.insert(introducer.getIdentity(null).getAddress(), introducer.getIdentity(null).getPort());
             });
         }
         // Initiate the insertions.
@@ -224,7 +223,7 @@ class SkipNodeTest {
             }
         }
         // Create a map of num ids to their corresponding lookup tables.
-        Map<Integer, LookupTable> tableMap = g.getNodes().stream()
+        Map<BigInteger, LookupTable> tableMap = g.getNodes().stream()
                 .collect(Collectors.toMap(SkipNode::getNumID, SkipNode::getLookupTable));
         // Check the correctness & consistency of the tables.
         for(SkipNode n : g.getNodes()) {
@@ -254,7 +253,7 @@ class SkipNodeTest {
         // Now, insert every node in a randomized order.
         g.insertAllRandomized();
         // Create a map of num ids to their corresponding lookup tables.
-        Map<Integer, LookupTable> tableMap = g.getNodes().stream()
+        Map<BigInteger, LookupTable> tableMap = g.getNodes().stream()
                 .collect(Collectors.toMap(SkipNode::getNumID, SkipNode::getLookupTable));
         // Check the correctness of the tables.
         for(SkipNode n : g.getNodes()) {
@@ -288,10 +287,10 @@ class SkipNodeTest {
             for(int j = 0; j < NODES; j++) {
                 SkipNode target = g.getNodes().get(j);
                 SearchResult result = initiator.searchByNameID(target.getNameID());
-                if(!result.result.equals(target.getIdentity())) {
+                if(!result.result.equals(target.getIdentity(null))) {
                     initiator.searchByNameID(target.getNameID());
                 }
-                Assertions.assertEquals(target.getIdentity(), result.result);
+                Assertions.assertEquals(target.getIdentity(null), result.result);
             }
         }
         underlays.forEach(Underlay::terminate);
@@ -322,23 +321,25 @@ class SkipNodeTest {
             for(int j = 0; j < NODES; j++) {
                 SkipNode target = g.getNodes().get(j);
                 SkipNodeIdentity result = initiator.searchByNumID(target.getNumID());
-                Assertions.assertEquals(target.getIdentity(), result);
+                Assertions.assertEquals(target.getIdentity(null), result);
             }
         }
         underlays.forEach(Underlay::terminate);
     }
 
     // Checks the correctness of a lookup table owned by the node with the given identity parameters.
-    static void tableCorrectnessCheck(int numID, String nameID, LookupTable table) {
+    static void tableCorrectnessCheck(BigInteger numID, String nameID, LookupTable table) {
         for(int i = 0; i < table.getNumLevels(); i++) {
             List<SkipNodeIdentity> lefts = table.getLefts(i);
             List<SkipNodeIdentity> rights = table.getRights(i);
             for(SkipNodeIdentity l : lefts) {
-                Assertions.assertTrue(l.getNumID() < numID);
+                //l.getNumID() < numID
+                Assertions.assertTrue(l.getNumID().compareTo(numID) == -1);
                 Assertions.assertTrue(SkipNodeIdentity.commonBits(l.getNameID(), nameID) >= i);
             }
             for(SkipNodeIdentity r : rights) {
-                Assertions.assertTrue(r.getNumID() > numID);
+                //r.getNumID() > numID
+                Assertions.assertTrue(r.getNumID().compareTo(numID) == 1);
                 Assertions.assertTrue(SkipNodeIdentity.commonBits(r.getNameID(), nameID) >= i);
             }
         }
@@ -346,7 +347,7 @@ class SkipNodeTest {
 
     // Checks the consistency of a lookup table. In other words, we assert that if x is a neighbor of y at level l,
     // then y is a neighbor of x at level l (in opposite directions).
-    static void tableConsistencyCheck(Map<Integer, LookupTable> tableMap, SkipNode node) {
+    static void tableConsistencyCheck(Map<BigInteger, LookupTable> tableMap, SkipNode node) {
         LookupTable table = node.getLookupTable();
         for(int i = 0; i < table.getNumLevels(); i++) {
             List<SkipNodeIdentity> lefts = table.getLefts(i);
@@ -354,11 +355,11 @@ class SkipNodeTest {
             // Check whether the neighbors agree on the neighborship relationships.
             for(SkipNodeIdentity l : lefts) {
                 LookupTable neighborMap = tableMap.get(l.getNumID());
-                Assertions.assertTrue(neighborMap.isRightNeighbor(node.getIdentity(), i));
+                Assertions.assertTrue(neighborMap.isRightNeighbor(node.getIdentity(null), i));
             }
             for(SkipNodeIdentity r : rights) {
                 LookupTable neighborMap = tableMap.get(r.getNumID());
-                Assertions.assertTrue(neighborMap.isLeftNeighbor(node.getIdentity(), i));
+                Assertions.assertTrue(neighborMap.isLeftNeighbor(node.getIdentity(null), i));
             }
         }
     }

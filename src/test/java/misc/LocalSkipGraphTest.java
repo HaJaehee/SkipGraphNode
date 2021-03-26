@@ -6,6 +6,8 @@ import org.junit.jupiter.api.Test;
 import skipnode.SkipNode;
 import skipnode.SkipNodeIdentity;
 
+import java.math.BigInteger;
+
 class LocalSkipGraphTest {
 
     @Test
@@ -33,7 +35,7 @@ class LocalSkipGraphTest {
     }
 
     // Checks the correctness of a lookup table owned by the node with the given identity parameters.
-    static void tableCorrectnessCheck(int numID, String nameID, LookupTable table) {
+    static void tableCorrectnessCheck(BigInteger numID, String nameID, LookupTable table) {
         for(int i = 0; i < table.getNumLevels(); i++) {
             for(int j = 0; j < 2; j++) {
                 SkipNodeIdentity neighbor = (j == 0) ? table.getLeft(i) : table.getRight(i);
@@ -42,8 +44,10 @@ class LocalSkipGraphTest {
             }
             SkipNodeIdentity leftNeighbor = table.getLeft(i);
             SkipNodeIdentity rightNeighbor = table.getRight(i);
-            if(!leftNeighbor.equals(LookupTable.EMPTY_NODE)) Assertions.assertTrue(leftNeighbor.getNumID() < numID);
-            if(!rightNeighbor.equals(LookupTable.EMPTY_NODE)) Assertions.assertTrue(rightNeighbor.getNumID() > numID);
+            //leftNeighbor.getNumID() < numID
+            if(!leftNeighbor.equals(LookupTable.EMPTY_NODE)) Assertions.assertTrue(leftNeighbor.getNumID().compareTo(numID) == -1);
+            //leftNeighbor.getNumID() > numID
+            if(!rightNeighbor.equals(LookupTable.EMPTY_NODE)) Assertions.assertTrue(rightNeighbor.getNumID().compareTo(numID) == 1);
         }
     }
 

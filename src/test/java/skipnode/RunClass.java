@@ -13,6 +13,17 @@ package skipnode;
  Added a function createNodeTest() which contains YAML parser.
  Added logback.
  Added testcode with incremental features.
+ Added hex id to decimal id features.
+ Modifier : Jaehee ha (jaehee.ha@kaist.ac.kr)
+
+ Rev. history : 2021-03-19
+ Version : 1.0.0
+ Added Jedis features as a key-value storage system.
+ Modifier : Jaehee ha (jaehee.ha@kaist.ac.kr)
+
+ Rev. history : 2021-03-22
+ Version : 1.0.1
+ Modified Jedis features as a key-value storage system.
  Modifier : Jaehee ha (jaehee.ha@kaist.ac.kr)
  */
 /* -------------------------------------------------------- */
@@ -21,20 +32,25 @@ import lookup.ConcurrentLookupTable;
 import lookup.LookupTableFactory;
 import middlelayer.MiddleLayer;
 import org.yaml.snakeyaml.Yaml;
+import redis.clients.jedis.Jedis;
 import underlay.Underlay;
 import underlay.udp.UDPUnderlay;
 
 import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.Reader;
+import java.math.BigInteger;
 import java.net.Inet4Address;
 import java.net.UnknownHostException;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
 import java.util.Map;
 
 public class RunClass {
 
     public static int LEVEL = 32;
+    public static Jedis jedis = null;
 
     public static SkipNode createNodeTest(String fileName, int increment) {
 
@@ -52,27 +68,32 @@ public class RunClass {
         LookupTableFactory factory = new LookupTableFactory();
         ConcurrentLookupTable table = (ConcurrentLookupTable) factory.createDefaultLookupTable(LEVEL);
 
+        String exampleHash = "05e0233cfa62dce67e36240f67f90f0c472a80f199599f65e7fcf97c08eb9a97";
+
         String nameIdAssignProto = yamlMaps.get("name_id_assignment_protocol").toString();
         String nameId = null;
         if (nameIdAssignProto.equals("none")) {
-            nameId = yamlMaps.get("name_id_value_self_assigned").toString();
+            nameId = new BigInteger(yamlMaps.get("name_id_value_self_assigned").toString(), 16).toString(2);
         }
         else if (nameIdAssignProto.equals("incremental")){
-            nameId = "1101";
-            String binary = Integer.toBinaryString(increment);
-            nameId = nameId + String.format("%28s", binary).replaceAll(" ", "0");
+            BigInteger bigInt = new BigInteger(exampleHash, 16);
+            bigInt = bigInt.add(BigInteger.valueOf(increment));
+            nameId = bigInt.toString(2);
         }
         else {
             //TODO: TBD
         }
+        nameId = String.format("%256s", nameId).replaceAll(" ", "0");
+
 
         String numIdAssignProto = yamlMaps.get("numerical_id_assignment_protocol").toString();
-        int numId = 0;
+        BigInteger numId = BigInteger.valueOf(0);
         if (numIdAssignProto.equals("none")) {
-            numId = Integer.parseInt(yamlMaps.get("numerical_id_value_self_assigned").toString());
+            numId = new BigInteger(yamlMaps.get("numerical_id_value_self_assigned").toString(), 16);
         }
         else if (numIdAssignProto.equals("incremental")){
-            numId = 1234 + increment;
+            numId = new BigInteger(exampleHash, 16);
+            numId = numId.add(BigInteger.valueOf(increment));
         }
         else {
             //TODO: TBD
@@ -115,11 +136,27 @@ public class RunClass {
             return null;
         }
 
+        String storageType = yamlMaps.get("storage_type").toString();
+        String storagePath = null;
+        boolean isUsingRedis = false;
 
-        SkipNodeIdentity identity = new SkipNodeIdentity(nameId, numId, address, port);
+        if (storageType.equals("none"))
+        {
+            // Do nothing.
+        }
+        else if (storageType.equals("path"))
+        {
+            storagePath = yamlMaps.get("storage_path").toString();
+        }
+        else if (storageType.equals("redis"))
+        {
+            isUsingRedis = true;
+        }
 
+        SkipNodeIdentity identity = new SkipNodeIdentity(nameId, numId, address, port,null, null);
 
-        SkipNode node = new SkipNode(identity, table);
+        SkipNode node = new SkipNode(identity, table, isUsingRedis);
+
         Underlay underlay = new UDPUnderlay();
         underlay.initialize(port);
         MiddleLayer middleLayer = new MiddleLayer(underlay, node);
@@ -134,17 +171,45 @@ public class RunClass {
     public static SkipNode createNodeTest(String fileName) {
         return createNodeTest(fileName, 0);
     }
-    public static void main(String[] args) {
+
+    public static void main(String[] args) throws NoSuchAlgorithmException {
+
+        String exampleHash = "05e0233cfa62dce67e36240f67f90f0c472a80f199599f65e7fcf97c08eb9a97";
 
         ArrayList<SkipNode> nodeList = new ArrayList<>();
         nodeList.add(createNodeTest("config1.yml"));
         for (int inc = 1 ; inc < 20 ; inc++) {
             nodeList.add(createNodeTest("config2.yml",inc));
+//            System.out.println(nodeList.get(inc).getNodeListAtHighestLevel().size());
         }
 
-        System.out.println((nodeList.get(19).getNameID()).toString());
-        System.out.println((nodeList.get(19).searchByNameID("110100000")).result.getNameID());
-        System.out.println((nodeList.get(19).searchByNameID("11010000000000000000000000000000")).result.getNameID());
-        System.out.println((nodeList.get(0).searchByNumID(3456).getNumID()));
+//        System.out.println(nodeList.get(0).getResourceByNumID(new BigInteger(exampleHash, 16)));
+//        System.out.println((nodeList.get(19).getNameID()));
+//        System.out.println((nodeList.get(0).searchByNameID("110100000")).result.getNameID());
+//        System.out.println((nodeList.get(0).searchByNameID("110100000")).result.getNameID().length());
+//        System.out.println((nodeList.get(19).searchByNameID("11010000000000000000000000000000")).result.getNameID().length());
+//        System.out.println((nodeList.get(0).searchByNumID(BigInteger.valueOf(3456)).getNumID().toString(16)));
+//        System.out.println((nodeList.get(19).getNumID().toString(16)));
+//        System.out.println(nodeList.get(10).getResourceByNumID(new BigInteger("5e0233cfa62dce67e36240f67f90f0c472a80f199599f65e7fcf97c08eb9a97", 16)));
+//        System.out.println(nodeList.get(10).searchByNumID(new BigInteger("5e0233cfa62dce67e36240f67f90f0c472a80f199599f65e7fcf97c08eb9a97", 16)).getNumID().toString(16));
+
+        MessageDigest md = MessageDigest.getInstance("SHA-256");
+        String hello = "hello";
+        byte[] helloBytes = SkipNode.sha256(hello);
+        System.out.println(SkipNode.bytesToHex(helloBytes));
+        nodeList.get(0).storeResourceByResourceKey(SkipNode.bytesToHex(helloBytes),"hello");
+
+        System.out.println("how are you? "+ nodeList.get(0).getResourceByResourceKey(SkipNode.bytesToHex(helloBytes)));
+
+//        ArrayList<SkipNodeIdentity> list = nodeList.get(10).getNodeListByNameID("00000101111000000010001100111100");
+//        list = nodeList.get(19).getNodeListAtHighestLevel();
+//        for (SkipNodeIdentity s: list) {
+//            System.out.println(s.getNameID());
+//        }
+//
+//        System.out.println(nodeList.get(19).getFirstNodeAtHighestLevel().getNumID().toString(16));
+//        for (SkipNode s : nodeList) {
+//            System.out.println(s.getNodeListAtHighestLevel().size());
+//        }
     }
 }

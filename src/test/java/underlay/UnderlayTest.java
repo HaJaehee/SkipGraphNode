@@ -3,14 +3,13 @@ package underlay;
 import lookup.LookupTable;
 import lookup.LookupTableFactory;
 import middlelayer.MiddleLayer;
-import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeAll;
-import org.junit.jupiter.api.Test;
 import skipnode.SkipNode;
 import skipnode.SkipNodeInterface;
-import underlay.packets.RequestType;
 import underlay.packets.requests.*;
+
+import java.math.BigInteger;
 
 /**
  * This test creates two underlays on the machine at different ports and checks the
@@ -30,7 +29,7 @@ public class UnderlayTest {
      * @param underlay underlay to be built.
      */
     protected static void buildLayers(Underlay underlay) {
-        SkipNodeInterface overlay = new SkipNode(LookupTable.EMPTY_NODE, LookupTableFactory.createDefaultLookupTable(2));
+        SkipNodeInterface overlay = new SkipNode(LookupTable.EMPTY_NODE, LookupTableFactory.createDefaultLookupTable(2), false);
         MiddleLayer middleLayer = new MiddleLayer(underlay, overlay);
         underlay.setMiddleLayer(middleLayer);
         overlay.setMiddleLayer(middleLayer);
@@ -57,9 +56,9 @@ public class UnderlayTest {
         int remotePort = remoteUnderlay.getPort();
 
         // Check search by name ID request.
-        Assertions.assertNotNull(localUnderlay.sendMessage(remoteAddress, remotePort, new SearchByNameIDRequest("")));
+        Assertions.assertNotNull(localUnderlay.sendMessage(remoteAddress, remotePort, new SearchByNameIDRequest("", false, false, null, null)));
         // Check search by numerical ID request.
-        Assertions.assertNotNull(localUnderlay.sendMessage(remoteAddress, remotePort, new SearchByNumIDRequest(0)));
+        Assertions.assertNotNull(localUnderlay.sendMessage(remoteAddress, remotePort, new SearchByNumIDRequest(BigInteger.valueOf(0), false, false, null)));
         // Check level-based search by name ID request.
         Assertions.assertNotNull(localUnderlay.sendMessage(remoteAddress, remotePort, new NameIDLevelSearchRequest(0, 0, "")));
         // Check left/right update requests.

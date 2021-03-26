@@ -4,7 +4,8 @@ port_value_self_assigned: 11099
 introducer_address: none
 introducer_port: 0
 name_id_assignment_protocol: none
-name_id_value_self_assigned: 11010000000000000000000000000000
+name_id_value_self_assigned: 05e0233cfa62dce67e36240f67f90f0c472a80f199599f65e7fcf97c08eb9a97
 numerical_id_assignment_protocol: none
-numerical_id_value_self_assigned: 1234
+numerical_id_value_self_assigned: 05e0233cfa62dce67e36240f67f90f0c472a80f199599f65e7fcf97c08eb9a97
+storage_type: redis
 storage_path: none

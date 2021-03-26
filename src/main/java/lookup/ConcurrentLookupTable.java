@@ -1,7 +1,19 @@
 package lookup;
 
+/* -------------------------------------------------------- */
+/**
+ File name : ConcurrentLookupTable.java
+ Rev. history : 2021-03-25
+ Version : 1.0.3
+ Added nodesAtHighestLevel.
+ Modifier : Jaehee ha (jaehee.ha@kaist.ac.kr)
+ */
+/* -------------------------------------------------------- */
+
+
 import skipnode.SkipNodeIdentity;
 
+import java.math.BigInteger;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.locks.ReadWriteLock;
@@ -21,6 +33,8 @@ public class ConcurrentLookupTable implements LookupTable {
      */
     private ArrayList<SkipNodeIdentity> nodes;
 
+    private ArrayList<SkipNodeIdentity> nodesAtHighestLevel;
+
     private enum direction {
         LEFT,
         RIGHT
@@ -33,6 +47,26 @@ public class ConcurrentLookupTable implements LookupTable {
         for(int i = 0; i < 2 * numLevels; i++){
             nodes.add(i, LookupTable.EMPTY_NODE);
         }
+        nodesAtHighestLevel = new ArrayList<SkipNodeIdentity>();
+    }
+
+    /**
+     *
+     * @param id
+     */
+    @Override
+    public void addNodeIntoListAtHighestLevel (SkipNodeIdentity id) {
+        nodesAtHighestLevel.add(id);
+    }
+
+    @Override
+    public void setNodeListAtHighestLevel (ArrayList<SkipNodeIdentity> list) {
+        this.nodesAtHighestLevel = list;
+    }
+
+    @Override
+    public ArrayList<SkipNodeIdentity> getNodeListAtHighestLevel () {
+        return nodesAtHighestLevel;
     }
 
     @Override
@@ -79,19 +113,25 @@ public class ConcurrentLookupTable implements LookupTable {
         return node;
     }
 
-    @Override
+    // TODO SOMETHING WEIRD
     public List<SkipNodeIdentity> getRights(int level) {
         List<SkipNodeIdentity> ls = new ArrayList<>(1);
         SkipNodeIdentity id = getRight(level);
-        if(!id.equals(LookupTable.EMPTY_NODE)) ls.add(id);
+        if(!id.equals(LookupTable.EMPTY_NODE)) {
+            ls.add(id);
+        }
         return ls;
     }
 
-    @Override
+
+    // TODO SOMETHING WEIRD
     public List<SkipNodeIdentity> getLefts(int level) {
         List<SkipNodeIdentity> ls = new ArrayList<>(1);
         SkipNodeIdentity id = getLeft(level);
-        if(!id.equals(LookupTable.EMPTY_NODE)) ls.add(id);
+        if(!id.equals(LookupTable.EMPTY_NODE))
+        {
+            ls.add(id);
+        }
         return ls;
     }
 
@@ -136,12 +176,13 @@ public class ConcurrentLookupTable implements LookupTable {
      * @return the list of neighbors (both right and left) of the newly inserted node.
      */
     @Override
-    public TentativeTable acquireNeighbors(SkipNodeIdentity owner, int newNumID, String newNameID, int level) {
+    public TentativeTable acquireNeighbors(SkipNodeIdentity owner, BigInteger newNumID, String newNameID, int level) {
         lock.readLock().lock();
         List<List<SkipNodeIdentity>> newTable = new ArrayList<>();
         newTable.add(new ArrayList<>());
         newTable.get(0).add(owner);
-        if(newNumID < owner.getNumID() && !getLeft(level).equals(LookupTable.EMPTY_NODE))
+        //newNumID < owner.getNumID()
+        if(newNumID.compareTo(owner.getNumID()) == -1 && !getLeft(level).equals(LookupTable.EMPTY_NODE))
             newTable.get(0).add(getLeft(level));
         else if(!getRight(level).equals(LookupTable.EMPTY_NODE))
             newTable.get(0).add(getRight(level));
@@ -157,11 +198,11 @@ public class ConcurrentLookupTable implements LookupTable {
     @Override
     public void initializeTable(SkipNodeIdentity owner, TentativeTable tentativeTable) {
         SkipNodeIdentity left = tentativeTable.neighbors.get(0).stream()
-                .filter(x -> x.getNumID() <= owner.getNumID())
+                .filter(x -> (x.getNumID().compareTo(owner.getNumID()) == -1 || x.getNumID().compareTo(owner.getNumID()) == 0)) //x.getNumID() <= owner.getNumID()
                 .findFirst()
                 .orElse(LookupTable.EMPTY_NODE);
         SkipNodeIdentity right = tentativeTable.neighbors.get(0).stream()
-                .filter(x -> x.getNumID() > owner.getNumID())
+                .filter(x -> x.getNumID().compareTo(owner.getNumID()) == 1) //x.getNumID() > owner.getNumID()
                 .findFirst()
                 .orElse(LookupTable.EMPTY_NODE);
         updateLeft(left, tentativeTable.specificLevel);

@@ -1,35 +1,65 @@
 package skipnode;
+/* -------------------------------------------------------- */
+/**
+ File name : SkipNodeIdentity.java
+ Rev. history : 2021-03-19
+ Version : 1.0.0
+ Added storage path and jedis.
+ Modifier : Jaehee ha (jaehee.ha@kaist.ac.kr)
+
+ Rev. history : 2021-03-22
+ Version : 1.0.1
+ Modified Jedis features as a key-value storage system.
+ Modifier : Jaehee ha (jaehee.ha@kaist.ac.kr)
+
+ Rev. history : 2021-03-26
+ Version : 1.0.4
+ Removed unused Jedis features.
+ Modifier : Jaehee ha (jaehee.ha@kaist.ac.kr)
+ */
+/* -------------------------------------------------------- */
+
 
 import java.io.Serializable;
+import java.math.BigInteger;
 import java.util.Objects;
 
 // Basic skipnode.SkipNodeIdentity class
 public class SkipNodeIdentity implements Serializable, Comparable<SkipNodeIdentity> {
     private final String nameID;
-    private final int numID;
+    private final BigInteger numID;
     private final String address;
     private final int port;
+    private final String storagePath;
+    private final String resourceQueryResult;
 
     // Denotes the lookup table version.
     public int version;
 
-    public SkipNodeIdentity(String nameID, int numID, String address, int port, int version) {
+    public SkipNodeIdentity(String nameID, BigInteger numID, String address, int port, int version, String storagePath, String resourceQueryResult) {
         this.nameID = nameID;
         this.numID = numID;
         this.address = address;
         this.port = port;
         this.version = version;
+        this.storagePath = storagePath;
+        this.resourceQueryResult = resourceQueryResult;
     }
 
-    public SkipNodeIdentity(String nameID, int numID, String address, int port) {
-        this(nameID, numID, address, port, 0);
+    public SkipNodeIdentity(String nameID, BigInteger numID, String address, int port, String storagePath, String resourceQueryResult){
+        this(nameID, numID, address, port, 0, storagePath, resourceQueryResult);
     }
+
+    public SkipNodeIdentity(String nameID, BigInteger numID, String address, int port){
+        this(nameID, numID, address, port, 0, null, null);
+    }
+
 
     public String getNameID() {
         return nameID;
     }
 
-    public int getNumID() {
+    public BigInteger getNumID() {
         return numID;
     }
 
@@ -39,12 +69,25 @@ public class SkipNodeIdentity implements Serializable, Comparable<SkipNodeIdenti
 
     public int getPort() {return port;}
 
+    public String getStoragePath() {
+        return storagePath;
+    }
+
+    public String getResourceQueryResult() {
+        if (resourceQueryResult == null) {
+            return "";
+        }
+        else {
+            return resourceQueryResult;
+        }
+    }
+
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
         SkipNodeIdentity that = (SkipNodeIdentity) o;
-        return getNumID() == that.getNumID() &&
+        return getNumID().equals(that.getNumID()) &&
                 getNameID().equals(that.getNameID()) &&
                 getAddress().equals(that.getAddress()) &&
                 getPort() == that.getPort();
@@ -68,11 +111,11 @@ public class SkipNodeIdentity implements Serializable, Comparable<SkipNodeIdenti
 
     @Override
     public String toString() {
-        return "Name ID: "+nameID+"\tNum ID: "+numID+"\tAddress: "+address+"\tPort: "+port;
+        return "Name ID: "+nameID+"\tNum ID: "+numID.toString()+"\tAddress: "+address+"\tPort: "+port;
     }
 
     @Override
     public int compareTo(SkipNodeIdentity o) {
-        return Integer.compare(numID, o.numID);
+        return numID.compareTo(o.numID);
     }
 }

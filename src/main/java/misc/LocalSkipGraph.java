@@ -1,14 +1,12 @@
 package misc;
 
-import lookup.ConcurrentBackupTable;
-import lookup.ConcurrentLookupTable;
 import lookup.LookupTable;
 import lookup.LookupTableFactory;
 import skipnode.SkipNode;
 import skipnode.SkipNodeIdentity;
 
+import java.math.BigInteger;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -24,11 +22,11 @@ public class LocalSkipGraph {
     public LocalSkipGraph(int size, String localAddress, int startingPort, boolean manualJoin) {
         int nameIDSize = ((int) (Math.log(size)/Math.log(2)));
         // Create the numerical IDs.
-        List<Integer> numIDs = new ArrayList<>(size);
-        for(int i = 0; i < size; i++) numIDs.add(i);
+        List<BigInteger> numIDs = new ArrayList<>(size);
+        for(int i = 0; i < size; i++) numIDs.add(BigInteger.valueOf(i));
         // Create the name IDs.
         List<String> nameIDs = numIDs.stream()
-                .map(numID -> prependToLength(Integer.toBinaryString(numID), nameIDSize))
+                .map(numID -> prependToLength(numID.toString(2), nameIDSize))
                 .collect(Collectors.toList());
         // Randomly assign name IDs.
         Collections.shuffle(nameIDs);
@@ -66,7 +64,7 @@ public class LocalSkipGraph {
         // Finally, construct the nodes.
         skipNodes = new ArrayList<>(size);
         for(int i = 0; i < size; i++) {
-            SkipNode skipNode = new SkipNode(identities.get(i), lookupTables.get(i));
+            SkipNode skipNode = new SkipNode(identities.get(i), lookupTables.get(i), false);
             // Mark as inserted if lookup table was created manually.
             if(manualJoin) skipNode.insert(null, -1);
             skipNodes.add(skipNode);
@@ -105,7 +103,7 @@ public class LocalSkipGraph {
         // Insert the remaining nodes.
         for(int i = 1; i < getNodes().size(); i++) {
             SkipNode initiator = getNodes().get(i-1);
-            getNodes().get(i).insert(initiator.getIdentity().getAddress(), initiator.getIdentity().getPort());
+            getNodes().get(i).insert(initiator.getIdentity(null).getAddress(), initiator.getIdentity(null).getPort());
         }
     }
 
@@ -122,7 +120,7 @@ public class LocalSkipGraph {
         // Insert the remaining nodes.
         for(int i = 1; i < list.size(); i++) {
             SkipNode initiator = list.get(i-1);
-            list.get(i).insert(initiator.getIdentity().getAddress(), initiator.getIdentity().getPort());
+            list.get(i).insert(initiator.getIdentity(null).getAddress(), initiator.getIdentity(null).getPort());
         }
 
     }

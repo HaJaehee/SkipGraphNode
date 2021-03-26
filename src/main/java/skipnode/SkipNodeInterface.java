@@ -218,7 +218,7 @@ public interface SkipNodeInterface {
      * Returns the up-to-date identity of this node.
      * @return the up-to-date identity of this node.
      */
-    SkipNodeIdentity getIdentity();
+    SkipNodeIdentity getIdentity(String resourceQueryResult);
 
     SkipNodeIdentity getRightNodeAndAddNodeAtHighestLevel(int level, SkipNodeIdentity newNodeId);
 

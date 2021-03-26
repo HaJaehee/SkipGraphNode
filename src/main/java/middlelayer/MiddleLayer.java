@@ -115,7 +115,7 @@ public class MiddleLayer {
                 identity = overlay.handleResourceByNumID(((SearchByNumIDRequest) request).targetNumID, ((SearchByNumIDRequest) request).isGettingResource, ((SearchByNumIDRequest) request).isSettingResource, ((SearchByNumIDRequest) request).resourceValue);
                 return new IdentityResponse(identity);
             case GetIdentity:
-                identity = overlay.getIdentity();
+                identity = overlay.getIdentity(null);
                 return new IdentityResponse(identity);
             case GetNodeListAtHighestLevel:
                 return new NodeListResponse(overlay.getNodeListAtHighestLevel());

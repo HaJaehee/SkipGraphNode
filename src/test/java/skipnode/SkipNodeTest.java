@@ -108,7 +108,7 @@ class SkipNodeTest {
             final SkipNode introducer = g.getNodes().get(i-1);
             final SkipNode node = g.getNodes().get(i);
             insertionThreads[i-1] = new Thread(() -> {
-                node.insert(introducer.getIdentity().getAddress(), introducer.getIdentity().getPort());
+                node.insert(introducer.getIdentity(null).getAddress(), introducer.getIdentity(null).getPort());
             });
         }
 
@@ -134,7 +134,7 @@ class SkipNodeTest {
         System.out.println("INSERTIONS COMPLETE.");
         StringBuilder sb = new StringBuilder();
         for(SkipNode nd : g.getNodes()){
-            sb.append(nd.getIdentity() + " 's Backup Table\n");
+            sb.append(nd.getIdentity(null) + " 's Backup Table\n");
 //            System.out.println(nd.getIdentity() + " 's Backup Table");
 //            System.out.println(nd.getLookupTable());
             sb.append(nd.getLookupTable()+"\n");
@@ -142,7 +142,7 @@ class SkipNodeTest {
         final String excp = sb.toString();
         sb = new StringBuilder();
         for(SkipNode nd : g.getNodes()){
-            sb.append(nd.getIdentity() + " 's Backup Table AFTER insertion\n");
+            sb.append(nd.getIdentity(null) + " 's Backup Table AFTER insertion\n");
 //            System.out.println(nd.getIdentity() + " 's Backup Table");
 //            System.out.println(nd.getLookupTable());
             sb.append(nd.getLookupTable()+"\n");
@@ -208,7 +208,7 @@ class SkipNodeTest {
             final SkipNode introducer = g.getNodes().get((int)(Math.random() * i));
             final SkipNode node = g.getNodes().get(i);
             threads[i-1] = new Thread(() -> {
-                node.insert(introducer.getIdentity().getAddress(), introducer.getIdentity().getPort());
+                node.insert(introducer.getIdentity(null).getAddress(), introducer.getIdentity(null).getPort());
             });
         }
         // Initiate the insertions.
@@ -287,10 +287,10 @@ class SkipNodeTest {
             for(int j = 0; j < NODES; j++) {
                 SkipNode target = g.getNodes().get(j);
                 SearchResult result = initiator.searchByNameID(target.getNameID());
-                if(!result.result.equals(target.getIdentity())) {
+                if(!result.result.equals(target.getIdentity(null))) {
                     initiator.searchByNameID(target.getNameID());
                 }
-                Assertions.assertEquals(target.getIdentity(), result.result);
+                Assertions.assertEquals(target.getIdentity(null), result.result);
             }
         }
         underlays.forEach(Underlay::terminate);
@@ -321,7 +321,7 @@ class SkipNodeTest {
             for(int j = 0; j < NODES; j++) {
                 SkipNode target = g.getNodes().get(j);
                 SkipNodeIdentity result = initiator.searchByNumID(target.getNumID());
-                Assertions.assertEquals(target.getIdentity(), result);
+                Assertions.assertEquals(target.getIdentity(null), result);
             }
         }
         underlays.forEach(Underlay::terminate);
@@ -355,11 +355,11 @@ class SkipNodeTest {
             // Check whether the neighbors agree on the neighborship relationships.
             for(SkipNodeIdentity l : lefts) {
                 LookupTable neighborMap = tableMap.get(l.getNumID());
-                Assertions.assertTrue(neighborMap.isRightNeighbor(node.getIdentity(), i));
+                Assertions.assertTrue(neighborMap.isRightNeighbor(node.getIdentity(null), i));
             }
             for(SkipNodeIdentity r : rights) {
                 LookupTable neighborMap = tableMap.get(r.getNumID());
-                Assertions.assertTrue(neighborMap.isLeftNeighbor(node.getIdentity(), i));
+                Assertions.assertTrue(neighborMap.isLeftNeighbor(node.getIdentity(null), i));
             }
         }
     }

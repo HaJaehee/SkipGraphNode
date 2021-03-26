@@ -34,6 +34,11 @@ package skipnode;
  Implemented getResource() and storeResource().
  Modifier : Jaehee ha (jaehee.ha@kaist.ac.kr)
 
+ Rev. history : 2021-03-26
+ Version : 1.0.4
+ Removed the member variable that is resourceQueryResult.
+ Modifier : Jaehee ha (jaehee.ha@kaist.ac.kr)
+
  //TODO replicate resource into nodes having common name ID prefix
  //TODO Are we need to delete a resource?
  */
@@ -71,7 +76,6 @@ public class SkipNode implements SkipNodeInterface {
     private final int redisPort;
     private final String redisPassword;
     private final int redisTimeout;
-    private String resourceQueryResult;
     private JedisPool jedisPool;
 
     private MiddleLayer middleLayer;
@@ -87,20 +91,28 @@ public class SkipNode implements SkipNodeInterface {
 
     private static final Logger logger = LoggerFactory.getLogger(SkipNode.class);
 
-    public SkipNode(SkipNodeIdentity snID, LookupTable lookupTable) {
+    public SkipNode(SkipNodeIdentity snID, LookupTable lookupTable, boolean isUsingRedis) {
         this.address = snID.getAddress();
         this.port = snID.getPort();
         this.numID = snID.getNumID();
         this.nameID = snID.getNameID();
         this.lookupTable = lookupTable;
         this.storagePath = snID.getStoragePath();
-        this.isUsingRedis = snID.isUsingRedis();
-        this.redisPoolConfig = snID.getRedisPoolConfig();
-        this.redisAddress = snID.getRedisAddress();
-        this.redisPort = snID.getRedisPort();
-        this.redisTimeout = snID.getRedisTimeout();
-        this.redisPassword = snID.getRedisPassword();
-        this.resourceQueryResult = snID.getResourceQueryResult();
+        this.isUsingRedis = isUsingRedis;
+        if (isUsingRedis) {
+            this.redisPoolConfig = null;
+            this.redisAddress = "192.168.0.4";
+            this.redisPort = 6379;
+            this.redisTimeout = 1000;
+            this.redisPassword = "winslab";
+        }
+        else {
+            this.redisPoolConfig = null;
+            this.redisAddress = null;
+            this.redisPort = 0;
+            this.redisTimeout = 0;
+            this.redisPassword = null;
+        }
         this.jedisPool = null;
         insertionLock.startInsertion();
     }
@@ -127,7 +139,9 @@ public class SkipNode implements SkipNodeInterface {
     //TODO: skip node identity는 serializable 해야 한다.
     //TODO: identity에 redis get 값을 넣으면 되는 거 아닌가?
     //TODO: 그럼 member variable에는 redis에 접속할 수 있는 정보를 넣으면 되는건가?
-    public SkipNodeIdentity getIdentity() { return new SkipNodeIdentity(nameID, numID, address, port, version, storagePath, isUsingRedis, resourceQueryResult);
+    @Override
+    public SkipNodeIdentity getIdentity(String resourceQueryResult) {
+        return new SkipNodeIdentity(nameID, numID, address, port, version, storagePath, resourceQueryResult);
     }
 
     @Override
@@ -148,7 +162,7 @@ public class SkipNode implements SkipNodeInterface {
         // Trivially insert the first node of the skip graph.
         if(introducerAddress == null) {
             logger.debug(getNumID().toString(16) + " was inserted!");
-            lookupTable.addNodeIntoListAtHighestLevel(getIdentity());
+            lookupTable.addNodeIntoListAtHighestLevel(getIdentity(null));
             inserted = true;
             insertionLock.endInsertion();
             return;
@@ -189,21 +203,21 @@ public class SkipNode implements SkipNodeInterface {
             // Insert the neighbor into my own table.
             insertIntoTable(n.node, n.minLevel);
             // Let the neighbor insert me in its table.
-            middleLayer.announceNeighbor(n.node.getAddress(), n.node.getPort(), getIdentity(), n.minLevel);
+            middleLayer.announceNeighbor(n.node.getAddress(), n.node.getPort(), getIdentity(null), n.minLevel);
         }
         // Now, we release all of the locks.
         List<InsertionLock.NeighborInstance> toRelease = new ArrayList<>();
         ownedLocks.drainTo(toRelease);
         // Release the locks.
         toRelease.forEach(n -> {
-            middleLayer.unlock(n.node.getAddress(), n.node.getPort(), getIdentity());
+            middleLayer.unlock(n.node.getAddress(), n.node.getPort(), getIdentity(null));
         });
         // Complete the insertion.
         inserted = true;
         logger.debug(getNumID().toString(16) + " was inserted!");
 
         lookupTable.setNodeListAtHighestLevel(getNodeListFromNeighborAtHighestLevel());
-        lookupTable.addNodeIntoListAtHighestLevel(getIdentity());
+        lookupTable.addNodeIntoListAtHighestLevel(getIdentity(null));
         addNodeIntoListAtHighestLevelRecursively();
         insertionLock.endInsertion();
     }
@@ -232,7 +246,7 @@ public class SkipNode implements SkipNodeInterface {
                 // Try to acquire the lock for the left neighbor.
                 logger.debug(getNumID().toString(16) + " is trying to acquire a lock from " + leftNeighbor.getNumID());
                 boolean acquired = middleLayer.tryAcquire(leftNeighbor.getAddress(), leftNeighbor.getPort(),
-                        getIdentity(), leftNeighbor.version);
+                        getIdentity(null), leftNeighbor.version);
                 if(!acquired) {
                     allAcquired = false;
                     break;
@@ -244,7 +258,7 @@ public class SkipNode implements SkipNodeInterface {
                 logger.debug(getNumID().toString(16) + " is trying to acquire a lock from " + rightNeighbor.getNumID());
                 // Try to acquire the lock for the right neighbor.
                 boolean acquired = middleLayer.tryAcquire(rightNeighbor.getAddress(), rightNeighbor.getPort(),
-                        getIdentity(), rightNeighbor.version);
+                        getIdentity(null), rightNeighbor.version);
                 if(!acquired) {
                     allAcquired = false;
                     break;
@@ -280,7 +294,7 @@ public class SkipNode implements SkipNodeInterface {
             ownedLocks.drainTo(toRelease);
             // Release the locks.
             toRelease.forEach(n -> {
-                middleLayer.unlock(n.node.getAddress(), n.node.getPort(), getIdentity());
+                middleLayer.unlock(n.node.getAddress(), n.node.getPort(), getIdentity(null));
             });
         }
         return allAcquired;
@@ -336,7 +350,7 @@ public class SkipNode implements SkipNodeInterface {
         // then this node is the neighbor so we return it
         if(SkipNodeIdentity.commonBits(target, getNameID()) > level) {
             logger.debug(getNumID().toString(16) + " is returning a findLadder response.");
-            return getIdentity();
+            return getIdentity(null);
         }
         SkipNodeIdentity curr = (direction == 0) ? getLeftNode(level) : getRightNode(level);
         while(!curr.equals(LookupTable.EMPTY_NODE) && SkipNodeIdentity.commonBits(target, curr.getNameID()) <= level) {
@@ -390,7 +404,7 @@ public class SkipNode implements SkipNodeInterface {
      */
     @Override
     public String getResource(String resourceKey) {
-        handleJedisWithResourceKey(resourceKey, true, false, null);
+        String resourceQueryResult = handleJedisWithResourceKey(resourceKey, true, false, null);
         return resourceQueryResult;
     }
 
@@ -440,8 +454,7 @@ public class SkipNode implements SkipNodeInterface {
         // If this is the node the search request is looking for, return its identity
         logger.debug("in "+ this.numID.toString(16)+" handler, key: " + numID.toString(16));
         if (numID.equals(this.numID)) {
-            handleJedisWithNumID(numID, isGettingResource, isSettingResource, resourceValue);
-            return getIdentity();
+            return getIdentity(handleJedisWithNumID(numID, isGettingResource, isSettingResource, resourceValue));
         }
         // Initialize the level to begin looking at
         int level = lookupTable.getNumLevels();
@@ -461,8 +474,8 @@ public class SkipNode implements SkipNodeInterface {
             }
             // If the level is less than zero, then this node is the closest node to the numID being searched for from the right. Return.
             if (level < 0) {
-                handleJedisWithNumID(numID, isGettingResource, isSettingResource, resourceValue);
-                return getIdentity();
+
+                return getIdentity(handleJedisWithNumID(numID, isGettingResource, isSettingResource, resourceValue));
             }
             // Else, delegate the search to that node on the right
             SkipNodeIdentity delegateNode = lookupTable.getRight(level);
@@ -481,8 +494,8 @@ public class SkipNode implements SkipNodeInterface {
             }
             // If the level is less than zero, then this node is the closest node to the numID being searched for from the right. Return.
             if (level < 0) {
-                handleJedisWithNumID(numID, isGettingResource, isSettingResource, resourceValue);
-                return getIdentity();
+
+                return getIdentity(handleJedisWithNumID(numID, isGettingResource, isSettingResource, resourceValue));
             }
             // Else, delegate the search to that node on the right
             SkipNodeIdentity delegateNode = lookupTable.getLeft(level);
@@ -497,20 +510,22 @@ public class SkipNode implements SkipNodeInterface {
      * @param isSettingResource
      * @param resourceValue
      */
-    private void handleJedisWithNumID (BigInteger numID, boolean isGettingResource, boolean isSettingResource, String resourceValue) {
+    private String handleJedisWithNumID (BigInteger numID, boolean isGettingResource, boolean isSettingResource, String resourceValue) {
+        String returnResourceQueryResult = null;
         if (isGettingResource && isUsingRedis) {
             setJedisPool();
             Jedis jedis = jedisPool.getResource();
-            resourceQueryResult = jedis.get(numID.toString(16));
+            returnResourceQueryResult = jedis.get(numID.toString(16));
             jedis.close();
         }
         else if (isSettingResource && resourceValue != null && isUsingRedis) {
             setJedisPool();
             Jedis jedis = jedisPool.getResource();
             jedis.set(numID.toString(16), resourceValue);
-            resourceQueryResult = null;
+            returnResourceQueryResult = null;
             jedis.close();
         }
+        return returnResourceQueryResult;
     }
 
     /**
@@ -519,9 +534,10 @@ public class SkipNode implements SkipNodeInterface {
      * @param isGettingResource
      * @param isSettingResource
      * @param resourceValue
+     * @return The String
      */
-    private void handleJedisWithResourceKey (String resourceKey, boolean isGettingResource, boolean isSettingResource, String resourceValue) {
-        handleResourceByNumID(new BigInteger(resourceKey, 16),isGettingResource,isSettingResource,resourceValue);
+    private String handleJedisWithResourceKey (String resourceKey, boolean isGettingResource, boolean isSettingResource, String resourceValue) {
+        return handleJedisWithNumID(new BigInteger(resourceKey, 16),isGettingResource,isSettingResource,resourceValue);
     }
 
     /**
@@ -588,7 +604,7 @@ public class SkipNode implements SkipNodeInterface {
             left = middleLayer.getLeftNode(left.getAddress(), left.getPort(), highestLevel);
         }
 
-        cumulativeNodeList.add(getIdentity());
+        cumulativeNodeList.add(getIdentity(null));
 
         SkipNodeIdentity right = middleLayer.getRightNode(targetResult.result.getAddress(), targetResult.result.getPort(), highestLevel);
         while (!right.equals(LookupTable.EMPTY_NODE)) {
@@ -602,8 +618,7 @@ public class SkipNode implements SkipNodeInterface {
     private SearchResult handleResourceByNameID(String targetNameID, boolean isGettingResource, boolean isSettingResource, String resourceKey, String resourceValue) {
 
         if(nameID.equals(targetNameID)) {
-            handleJedisWithNameID(isGettingResource, isSettingResource, resourceKey, resourceValue);
-            return new SearchResult(getIdentity());
+            return new SearchResult(getIdentity(handleJedisWithNameID(isGettingResource, isSettingResource, resourceKey, resourceValue)));
         }
         // If the node is not completely inserted yet, return a tentative identity.
         if(!isAvailable()) {
@@ -612,8 +627,7 @@ public class SkipNode implements SkipNodeInterface {
         // Find the level in which the search should be started from.
         int level = SkipNodeIdentity.commonBits(nameID, targetNameID);
         if(level < 0) {
-            handleJedisWithNameID(isGettingResource, isSettingResource, resourceKey, resourceValue);
-            return new SearchResult(getIdentity());
+            return new SearchResult(getIdentity(handleJedisWithNameID(isGettingResource, isSettingResource, resourceKey, resourceValue)));
         }
         // Initiate the search.
         return middleLayer.searchByNameIDRecursive(address, port, targetNameID, level, isGettingResource, isSettingResource, resourceKey, resourceValue);
@@ -678,13 +692,12 @@ public class SkipNode implements SkipNodeInterface {
     @Override
     public SearchResult searchByNameIDRecursive(String targetNameID, int level, boolean isGettingResource, boolean isSettingResource, String resourceKey, String resourceValue) {
         if(nameID.equals(targetNameID)) {
-            handleJedisWithNameID(isGettingResource, isSettingResource, resourceKey, resourceValue);
-            return new SearchResult(getIdentity());
+            return new SearchResult(getIdentity(handleJedisWithNameID(isGettingResource, isSettingResource, resourceKey, resourceValue)));
         }
         // Buffer contains the `most similar node` to return in case we cannot climb up anymore. At first, we try to set this to the
         // non null potential ladder.
-        SkipNodeIdentity potentialLeftLadder = getIdentity();
-        SkipNodeIdentity potentialRightLadder = getIdentity();
+        SkipNodeIdentity potentialLeftLadder = getIdentity(null);
+        SkipNodeIdentity potentialRightLadder = getIdentity(null);
         SkipNodeIdentity buffer = (!potentialLeftLadder.equals(LookupTable.EMPTY_NODE)) ? potentialLeftLadder : potentialRightLadder;
         // This loop will execute and we expand our search window until a ladder is found either on the right or the left.
         while(SkipNodeIdentity.commonBits(targetNameID, potentialLeftLadder.getNameID()) <= level
@@ -727,20 +740,22 @@ public class SkipNode implements SkipNodeInterface {
         return new SearchResult(buffer);
     }
 
-    private void handleJedisWithNameID(boolean isGettingResource, boolean isSettingResource, String resourceKey, String resourceValue) {
+    private String handleJedisWithNameID(boolean isGettingResource, boolean isSettingResource, String resourceKey, String resourceValue) {
+        String returnResourceQueryResult = null;
         if (isGettingResource && resourceKey != null && isUsingRedis) {
             setJedisPool();
             Jedis jedis = jedisPool.getResource();
-            resourceQueryResult = jedis.get(resourceKey);
+            returnResourceQueryResult = jedis.get(resourceKey);
             jedis.close();
         }
         else if (isSettingResource && resourceKey != null && resourceValue != null && isUsingRedis) {
             setJedisPool();
             Jedis jedis = jedisPool.getResource();
             jedis.set(resourceKey, resourceValue);
-            resourceQueryResult = null;
+            returnResourceQueryResult = null;
             jedis.close();
         }
+        return  returnResourceQueryResult;
     }
 
 
@@ -754,12 +769,12 @@ public class SkipNode implements SkipNodeInterface {
 
         SkipNodeIdentity left = getLeftNode(highestLevel);
         while (!left.equals(LookupTable.EMPTY_NODE)) {
-            left = middleLayer.getLeftNodeAndAddNodeAtHighestLevel(left.getAddress(), left.getPort(), highestLevel, getIdentity());
+            left = middleLayer.getLeftNodeAndAddNodeAtHighestLevel(left.getAddress(), left.getPort(), highestLevel, getIdentity(null));
         }
 
         SkipNodeIdentity right = getRightNode(highestLevel);
         while (!right.equals(LookupTable.EMPTY_NODE)) {
-            right = middleLayer.getRightNodeAndAddNodeAtHighestLevel(right.getAddress(), right.getPort(), highestLevel, getIdentity());
+            right = middleLayer.getRightNodeAndAddNodeAtHighestLevel(right.getAddress(), right.getPort(), highestLevel, getIdentity(null));
         }
     }
 
@@ -793,7 +808,7 @@ public class SkipNode implements SkipNodeInterface {
             left = middleLayer.getLeftNode(left.getAddress(), left.getPort(), highestLevel);
         }
 
-        cumulativeNodeList.add(getIdentity());
+        cumulativeNodeList.add(getIdentity(null));
 
         SkipNodeIdentity right = getRightNode(highestLevel);
         while (!right.equals(LookupTable.EMPTY_NODE)) {
@@ -813,7 +828,7 @@ public class SkipNode implements SkipNodeInterface {
         int highestLevel = this.lookupTable.getNumLevels() - 1 ;
 
         SkipNodeIdentity left = getLeftNode(highestLevel);
-        SkipNodeIdentity buffer = getIdentity();
+        SkipNodeIdentity buffer = getIdentity(null);
         while (!left.equals(LookupTable.EMPTY_NODE)) {
             buffer = left;
             left = middleLayer.getLeftNode(left.getAddress(), left.getPort(), highestLevel);

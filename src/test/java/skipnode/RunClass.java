@@ -197,12 +197,22 @@ public class RunClass {
         String hello = "hello";
         byte[] helloBytes = SkipNode.sha256(hello);
         System.out.println(SkipNode.bytesToHex(helloBytes));
-        nodeList.get(10).storeResourceByResourceKey(SkipNode.bytesToHex(helloBytes),"hello");
+        nodeList.get(10).storeResourceByResourceKey(SkipNode.bytesToHex(helloBytes),hello);
 
+        System.out.println("how are you? "+ nodeList.get(0).getResourceByResourceKey(SkipNode.bytesToHex(helloBytes)));
+        System.out.println("how are you? "+ nodeList.get(19).getResourceByNameID("10111100000001000110011110011111", SkipNode.bytesToHex(helloBytes)));
+
+
+        hello = "hello2";
+        helloBytes = SkipNode.sha256(hello);
+        System.out.println(SkipNode.bytesToHex(helloBytes));
+
+        nodeList.get(10).storeResourceByNameID("10111100000001000110011110011111", SkipNode.bytesToHex(helloBytes),hello);
         System.out.println("how are you? "+ nodeList.get(0).getResourceByResourceKey(SkipNode.bytesToHex(helloBytes)));
         System.out.println("how are you? "+ nodeList.get(19).getResourceByNameID("1011110000000100011001111001111101", SkipNode.bytesToHex(helloBytes)));
 
-//        ArrayList<SkipNodeIdentity> list = nodeList.get(10).getNodeListByNameID("00000101111000000010001100111100");
+
+        //        ArrayList<SkipNodeIdentity> list = nodeList.get(10).getNodeListByNameID("00000101111000000010001100111100");
 //        list = nodeList.get(19).getNodeListAtHighestLevel();
 //        for (SkipNodeIdentity s: list) {
 //            System.out.println(s.getNameID());

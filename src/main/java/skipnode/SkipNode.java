@@ -39,7 +39,11 @@ package skipnode;
  Removed the member variable that is resourceQueryResult.
  Modifier : Jaehee ha (jaehee.ha@kaist.ac.kr)
 
- //TODO replicate resource into nodes having common name ID prefix
+ Rev. history : 2021-03-27
+ Version : 1.1.0
+ Implemented replication of resource into nodes having common name ID prefix
+ Modifier : Jaehee ha (jaehee.ha@kaist.ac.kr)
+
  //TODO Are we need to delete a resource?
  */
 /* -------------------------------------------------------- */
@@ -101,7 +105,7 @@ public class SkipNode implements SkipNodeInterface {
         this.isUsingRedis = isUsingRedis;
         if (isUsingRedis) {
             this.redisPoolConfig = null;
-            this.redisAddress = "192.168.0.4";
+            this.redisAddress = "127.0.0.1";
             this.redisPort = 6379;
             this.redisTimeout = 1000;
             this.redisPassword = "winslab";
@@ -173,7 +177,9 @@ public class SkipNode implements SkipNodeInterface {
             SkipNodeIdentity right = null;
             logger.debug(getNumID().toString(16) + " searches for its 0-level neighbors...");
             // First, find my 0-level neighbor by making a num-id search through the introducer.
+
             SkipNodeIdentity searchResult = middleLayer.handleResourceByNumID(introducerAddress, introducerPort, numID, false, false, null);
+
             // Get my 0-level left and right neighbors.
             //getNumID() < searchResult.getNumID()
             if(getNumID().compareTo(searchResult.getNumID()) == -1) {
@@ -414,8 +420,13 @@ public class SkipNode implements SkipNodeInterface {
      * @param resourceValue
      */
     @Override
-    public void storeResource(String resourceKey, String resourceValue) {
-        handleJedisWithResourceKey(resourceKey, false, true, resourceValue);
+    public SkipNodeIdentity storeResource(String resourceKey, String resourceValue) {
+        setJedisPool();
+        Jedis jedis = jedisPool.getResource();
+        jedis.set(resourceKey, resourceValue);
+        logger.debug("Resource Key: \""+ resourceKey +"\", value: \"" + resourceValue +"\" is stored into node ID: " + this.numID.toString(16));
+        jedis.close();
+        return getIdentity(null);
     }
 
     /**
@@ -480,7 +491,8 @@ public class SkipNode implements SkipNodeInterface {
             // Else, delegate the search to that node on the right
             SkipNodeIdentity delegateNode = lookupTable.getRight(level);
             return middleLayer.handleResourceByNumID(delegateNode.getAddress(), delegateNode.getPort(), numID, isGettingResource, isSettingResource, resourceValue);
-        } else {
+        }
+        else { // this.numID > numID
             // Start from the top, while there is no right neighbor, or the right neighbor's num ID is greater than what we are searching for
             // keep going down
             while(level>=0) {
@@ -492,7 +504,7 @@ public class SkipNode implements SkipNodeInterface {
                     break;
                 }
             }
-            // If the level is less than zero, then this node is the closest node to the numID being searched for from the right. Return.
+            // If the level is less than zero, then this node is the closest node to the numID being searched for from the left. Return.
             if (level < 0) {
 
                 return getIdentity(handleJedisWithNumID(numID, isGettingResource, isSettingResource, resourceValue));
@@ -519,11 +531,17 @@ public class SkipNode implements SkipNodeInterface {
             jedis.close();
         }
         else if (isSettingResource && resourceValue != null && isUsingRedis) {
-            setJedisPool();
-            Jedis jedis = jedisPool.getResource();
-            jedis.set(numID.toString(16), resourceValue);
+            for (SkipNodeIdentity i : lookupTable.getNodeListAtHighestLevel()) {
+                if (i.getNumID().compareTo(this.numID) == 0) {
+                    SkipNodeIdentity response = storeResource(numID.toString(16), resourceValue);
+                    //TODO response is not used in this version.
+                }
+                else {
+                    SkipNodeIdentity response = middleLayer.storeResource(i.getAddress(), i.getPort(), numID, resourceValue);
+                    //TODO response is not used in this version.
+                }
+            }
             returnResourceQueryResult = null;
-            jedis.close();
         }
         return returnResourceQueryResult;
     }
@@ -749,11 +767,17 @@ public class SkipNode implements SkipNodeInterface {
             jedis.close();
         }
         else if (isSettingResource && resourceKey != null && resourceValue != null && isUsingRedis) {
-            setJedisPool();
-            Jedis jedis = jedisPool.getResource();
-            jedis.set(resourceKey, resourceValue);
+            for (SkipNodeIdentity i : lookupTable.getNodeListAtHighestLevel()) {
+                if (i.getNumID().compareTo(this.numID) == 0) {
+                    SkipNodeIdentity response = storeResource(resourceKey, resourceValue);
+                    //TODO response is not used in this version.
+                }
+                else {
+                    SkipNodeIdentity response = middleLayer.storeResource(i.getAddress(), i.getPort(), new BigInteger(resourceKey, 16), resourceValue);
+                    //TODO response is not used in this version.
+                }
+            }
             returnResourceQueryResult = null;
-            jedis.close();
         }
         return  returnResourceQueryResult;
     }

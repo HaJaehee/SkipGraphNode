@@ -1,7 +1,7 @@
 underlay: udp
 port_assignment_protocol: incremental
 port_value_self_assigned: 0
-introducer_address: 192.168.0.4
+introducer_address: 127.0.0.1
 introducer_port: 11099
 name_id_assignment_protocol: incremental
 name_id_value_self_assigned: 0

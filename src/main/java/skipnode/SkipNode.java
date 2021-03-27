@@ -45,6 +45,7 @@ package skipnode;
  Modifier : Jaehee ha (jaehee.ha@kaist.ac.kr)
 
  //TODO Are we need to delete a resource?
+ //TODO name ID body가 000...인 node를 찾는 알고리즘이 필요함. (node list at highest level에서 찾으면 쉬움)
  */
 /* -------------------------------------------------------- */
 

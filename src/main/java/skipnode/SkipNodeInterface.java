@@ -79,7 +79,7 @@ public interface SkipNodeInterface {
      * @param resourceKey
      * @param resourceValue
      */
-    void storeResource(String resourceKey, String resourceValue);
+    SkipNodeIdentity storeResource(String resourceKey, String resourceValue);
 
 
     /**

@@ -169,6 +169,9 @@ public class MiddleLayer {
             case AnnounceNeighbor:
                 overlay.announceNeighbor(((AnnounceNeighborRequest) request).newNeighbor, ((AnnounceNeighborRequest) request).minLevel);
                 return new AckResponse();
+            case StoreResourceByNumIDRequest:
+                identity = overlay.storeResource(((StoreResourceByNumIDRequest) request).targetNumID.toString(16), ((StoreResourceByNumIDRequest) request).resourceValue);
+                return new IdentityResponse(identity);
             case IsAvailable:
                 return new BooleanResponse(overlay.isAvailable());
             default:
@@ -199,6 +202,11 @@ public class MiddleLayer {
     public SkipNodeIdentity handleResourceByNumID(String destinationAddress, int port, BigInteger numID, boolean isGettingResource, boolean isSettingResource, String resourceValue) {
         // Send the request through the underlay
         Response response = this.send(destinationAddress, port, new SearchByNumIDRequest(numID, isGettingResource, isSettingResource, resourceValue));
+        return ((IdentityResponse) response).identity;
+    }
+
+    public SkipNodeIdentity storeResource(String destinationAddress, int port, BigInteger numID, String resourceValue) {
+        Response response = this.send(destinationAddress, port, new StoreResourceByNumIDRequest(numID, resourceValue));
         return ((IdentityResponse) response).identity;
     }
 

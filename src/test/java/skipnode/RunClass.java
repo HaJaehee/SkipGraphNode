@@ -34,7 +34,7 @@ import middlelayer.MiddleLayer;
 import org.yaml.snakeyaml.Yaml;
 import redis.clients.jedis.Jedis;
 import underlay.Underlay;
-import underlay.udp.UDPUnderlay;
+import underlay.tcp.TCPUnderlay;
 
 import java.io.FileNotFoundException;
 import java.io.FileReader;
@@ -157,7 +157,7 @@ public class RunClass {
 
         SkipNode node = new SkipNode(identity, table, true);
 
-        Underlay underlay = new UDPUnderlay();
+        Underlay underlay = new TCPUnderlay();
         underlay.initialize(port);
         MiddleLayer middleLayer = new MiddleLayer(underlay, node);
         node.setMiddleLayer(middleLayer);

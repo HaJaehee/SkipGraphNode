@@ -10,6 +10,16 @@ package skipnode;
  *			Added log on/off and DHT on/off.
  */
 
+/* -------------------------------------------------------- */
+/**
+ File name : LMDHTServer.java
+ Rev. history : 2021-04-02
+ Version : 1.1.1
+ Added this class.
+ Modifier : Jaehee ha (jaehee.ha@kaist.ac.kr)
+ */
+/* -------------------------------------------------------- */
+
 import io.netty.bootstrap.Bootstrap;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.Unpooled;

@@ -44,6 +44,11 @@ package skipnode;
  Implemented replication of resource into nodes having common name ID prefix
  Modifier : Jaehee ha (jaehee.ha@kaist.ac.kr)
 
+ Rev. history : 2021-04-02
+ Version : 1.1.1
+ SearchByNumID() always returns closest node that has num id lower than target num id.
+ Modifier : Jaehee ha (jaehee.ha@kaist.ac.kr)
+
  //TODO Are we need to delete a resource?
  //TODO name ID body가 000...인 node를 찾는 알고리즘이 필요함. (node list at highest level에서 찾으면 쉬움)
  */

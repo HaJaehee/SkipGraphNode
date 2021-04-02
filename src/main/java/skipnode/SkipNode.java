@@ -471,14 +471,14 @@ public class SkipNode implements SkipNodeInterface {
         // Initialize the level to begin looking at
         int level = lookupTable.getNumLevels();
         // If the target is greater than this node's numID, the search should continue to the right
-        // this.numID < numID
-        if (this.numID.compareTo(numID) == -1) {
+
+        if (this.numID.compareTo(numID) == -1) { // this.numID < numID
             // Start from the top, while there is no right neighbor, or the right neighbor's num ID is greater than what we are searching for
             // keep going down
             while(level>=0) {
-                //lookupTable.getRight(level).getNumID() > numID
+
                 if (lookupTable.getRight(level)==LookupTable.EMPTY_NODE ||
-                        lookupTable.getRight(level).getNumID().compareTo(numID) == 1){
+                        lookupTable.getRight(level).getNumID().compareTo(numID) == 1){ //lookupTable.getRight(level).getNumID() > numID
                     level--;
                 } else {
                     break;
@@ -497,20 +497,18 @@ public class SkipNode implements SkipNodeInterface {
             // Start from the top, while there is no right neighbor, or the right neighbor's num ID is greater than what we are searching for
             // keep going down
             while(level>=0) {
-                //lookupTable.getLeft(level).getNumID() < numID
                 if (lookupTable.getLeft(level)==LookupTable.EMPTY_NODE ||
-                        lookupTable.getLeft(level).getNumID().compareTo(numID) == -1){
+                        lookupTable.getLeft(level).getNumID().compareTo(numID) == -1){ //lookupTable.getLeft(level).getNumID() < numID
                     level--;
                 } else {
                     break;
                 }
             }
             // If the level is less than zero, then this node is the closest node to the numID being searched for from the left. Return.
-            if (level < 0) {
-
+            if (level < 0 && lookupTable.getLeft(level)==LookupTable.EMPTY_NODE) {
                 return getIdentity(handleJedisWithNumID(numID, isGettingResource, isSettingResource, resourceValue));
             }
-            // Else, delegate the search to that node on the right
+            // Else, delegate the search to that node on the left
             SkipNodeIdentity delegateNode = lookupTable.getLeft(level);
             return middleLayer.handleResourceByNumID(delegateNode.getAddress(), delegateNode.getPort(), numID, isGettingResource, isSettingResource, resourceValue);
         }

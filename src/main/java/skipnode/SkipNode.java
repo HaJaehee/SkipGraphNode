@@ -649,7 +649,7 @@ public class SkipNode implements SkipNodeInterface {
             return new SearchResult(getIdentity(handleJedisWithNameID(isGettingResource, isSettingResource, resourceKey, resourceValue)));
         }
         // Initiate the search.
-        return middleLayer.searchByNameIDRecursive(address, port, targetNameID, level, isGettingResource, isSettingResource, resourceKey, resourceValue);
+        return middleLayer.handleResourceByNameIDRecursive(address, port, targetNameID, level, isGettingResource, isSettingResource, resourceKey, resourceValue);
     }
 
     /**
@@ -709,7 +709,7 @@ public class SkipNode implements SkipNodeInterface {
      * @return the SkipNodeIdentity of the closest SkipNode which has the common prefix length larger than `level`.
      */
     @Override
-    public SearchResult searchByNameIDRecursive(String targetNameID, int level, boolean isGettingResource, boolean isSettingResource, String resourceKey, String resourceValue) {
+    public SearchResult handleResourceByNameIDRecursive(String targetNameID, int level, boolean isGettingResource, boolean isSettingResource, String resourceKey, String resourceValue) {
         if(nameID.equals(targetNameID)) {
             return new SearchResult(getIdentity(handleJedisWithNameID(isGettingResource, isSettingResource, resourceKey, resourceValue)));
         }
@@ -744,10 +744,10 @@ public class SkipNode implements SkipNodeInterface {
             // Try to climb up on the either ladder.
             if(SkipNodeIdentity.commonBits(targetNameID, potentialRightLadder.getNameID()) > level) {
                 level = SkipNodeIdentity.commonBits(targetNameID, potentialRightLadder.getNameID());
-                return middleLayer.searchByNameIDRecursive(potentialRightLadder.getAddress(), potentialRightLadder.getPort(), targetNameID, level, isGettingResource, isSettingResource, resourceKey, resourceValue);
+                return middleLayer.handleResourceByNameIDRecursive(potentialRightLadder.getAddress(), potentialRightLadder.getPort(), targetNameID, level, isGettingResource, isSettingResource, resourceKey, resourceValue);
             } else if(SkipNodeIdentity.commonBits(targetNameID, potentialLeftLadder.getNameID()) > level) {
                 level = SkipNodeIdentity.commonBits(targetNameID, potentialLeftLadder.getNameID());
-                return middleLayer.searchByNameIDRecursive(potentialLeftLadder.getAddress(), potentialLeftLadder.getPort(), targetNameID, level, isGettingResource, isSettingResource, resourceKey, resourceValue);
+                return middleLayer.handleResourceByNameIDRecursive(potentialLeftLadder.getAddress(), potentialLeftLadder.getPort(), targetNameID, level, isGettingResource, isSettingResource, resourceKey, resourceValue);
             }
             // If we have expanded more than the length of the level, then return the most similar node (buffer).
             if(potentialLeftLadder.equals(LookupTable.EMPTY_NODE) && potentialRightLadder.equals(LookupTable.EMPTY_NODE)) {

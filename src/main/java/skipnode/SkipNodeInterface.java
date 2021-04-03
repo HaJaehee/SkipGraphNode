@@ -11,7 +11,7 @@ package skipnode;
  Rev. history : 2021-03-23
  Version : 1.0.2
  Implemented storeResourceByNumID(), storeResourceByResourceKey(), storeResourceByNameID(), and storeResourceReplicationsByNameID().
- Implemented handleResourceByNumID() and searchByNameIDRecursive().
+ Implemented handleResourceByNumID() and handleResourceByNameIDRecursive().
  Modifier : Jaehee ha (jaehee.ha@kaist.ac.kr)
 
  Rev. history : 2021-03-25
@@ -183,7 +183,7 @@ public interface SkipNodeInterface {
      * @param resourceValue
      * @return the identity of the node with the given name ID, or the node with the closest name ID.
      */
-    SearchResult searchByNameIDRecursive(String target, int level, boolean isGettingResource, boolean isSettingResource, String resourceKey, String resourceValue);
+    SearchResult handleResourceByNameIDRecursive(String target, int level, boolean isGettingResource, boolean isSettingResource, String resourceKey, String resourceValue);
 
     /**
      * TODO

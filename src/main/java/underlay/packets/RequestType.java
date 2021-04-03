@@ -20,7 +20,7 @@ package underlay.packets;
  */
 public enum RequestType {
     SearchByNameID,
-    SearchByNameIDRecursive,
+    handleResourceByNameIDRecursive,
     SearchByNumID,
     NameIDLevelSearch,
     UpdateLeftNode,

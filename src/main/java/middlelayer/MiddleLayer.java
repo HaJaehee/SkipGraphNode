@@ -104,10 +104,10 @@ public class MiddleLayer {
             case handleResourceByNameIDRecursive:
                 // Check whether the node is available for lookups (i.e., already inserted.)
                 if(!overlay.isAvailable()) return new Response(true);
-                result = overlay.handleResourceByNameIDRecursive(((handleResourceByNameIDRecursiveRequest) request).target,
-                        ((handleResourceByNameIDRecursiveRequest) request).level, ((handleResourceByNameIDRecursiveRequest) request).isGettingResource,
-                        ((handleResourceByNameIDRecursiveRequest) request).isSettingResource, ((handleResourceByNameIDRecursiveRequest) request).resourceKey,
-                        ((handleResourceByNameIDRecursiveRequest) request).resourceValue);
+                result = overlay.handleResourceByNameIDRecursive(((SearchByNameIDRecursiveRequest) request).target,
+                        ((SearchByNameIDRecursiveRequest) request).level, ((SearchByNameIDRecursiveRequest) request).isGettingResource,
+                        ((SearchByNameIDRecursiveRequest) request).isSettingResource, ((SearchByNameIDRecursiveRequest) request).resourceKey,
+                        ((SearchByNameIDRecursiveRequest) request).resourceValue);
                 return new SearchResultResponse(result);
             case SearchByNumID:
                 // Check whether the node is available for lookups (i.e., already inserted.)
@@ -195,7 +195,7 @@ public class MiddleLayer {
 
     public SearchResult handleResourceByNameIDRecursive(String destinationAddress, int port, String target, int level, boolean isGettingResource, boolean isSettingResource, String resourceKey, String resoureValue) {
         // Send the request through the underlay.
-        Response response = this.send(destinationAddress, port, new handleResourceByNameIDRecursiveRequest(target, level, isGettingResource, isSettingResource, resourceKey, resoureValue));
+        Response response = this.send(destinationAddress, port, new SearchByNameIDRecursiveRequest(target, level, isGettingResource, isSettingResource, resourceKey, resoureValue));
         return ((SearchResultResponse) response).result;
     }
 

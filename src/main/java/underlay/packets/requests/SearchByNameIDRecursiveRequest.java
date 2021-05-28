@@ -2,10 +2,10 @@ package underlay.packets.requests;
 
 /* -------------------------------------------------------- */
 /**
- File name : handleResourceByNameIDRecursiveRequest.java
+ File name : SearchByNameIDRecursiveRequest.java
  Rev. history : 2021-03-23
  Version : 1.0.2
- Implemented handleResourceByNameID().
+ Implemented SearchByNameIDRecursivelyRequest.
  Modifier : Jaehee ha (jaehee.ha@kaist.ac.kr)
 
  //TODO
@@ -16,7 +16,7 @@ package underlay.packets.requests;
 import underlay.packets.Request;
 import underlay.packets.RequestType;
 
-public class handleResourceByNameIDRecursiveRequest extends Request {
+public class SearchByNameIDRecursiveRequest extends Request {
 
     public final String target;
     public final int level;
@@ -25,7 +25,7 @@ public class handleResourceByNameIDRecursiveRequest extends Request {
     public final String resourceKey;
     public final String resourceValue;
 
-    public handleResourceByNameIDRecursiveRequest(String target, int level, boolean isGettingResource, boolean isSettingResource, String resourceKey, String resourceValue) {
+    public SearchByNameIDRecursiveRequest(String target, int level, boolean isGettingResource, boolean isSettingResource, String resourceKey, String resourceValue) {
         super(RequestType.handleResourceByNameIDRecursive);
         this.target = target;
         this.level = level;

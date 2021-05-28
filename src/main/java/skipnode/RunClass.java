@@ -57,7 +57,7 @@ public class RunClass {
         Yaml yparser = new Yaml();
         Reader yamlFile = null;
         try {
-            yamlFile = new FileReader("C:\\Users\\loves\\Documents\\GitHub\\SkipGraphNode\\"+fileName);
+            yamlFile = new FileReader("src/main/java/skipnode/"+fileName);
         } catch (FileNotFoundException e) {
             e.printStackTrace();
             return null;

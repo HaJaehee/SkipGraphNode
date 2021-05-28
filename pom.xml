@@ -30,8 +30,11 @@
 				<configuration>
 					<archive>
 						<manifestFile>${project.build.outputDirectory}/META-INF/MANIFEST.MF</manifestFile>
-						<addClasspath>true</addClasspath>
-						<classpathPrefix>lib/</classpathPrefix>
+						<manifest>
+							<addClasspath>true</addClasspath>
+							<classpathPrefix>lib/</classpathPrefix>
+						</manifest>
+
 					</archive>
 				</configuration>
 			</plugin>

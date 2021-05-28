@@ -57,7 +57,7 @@ public class RunClass {
         Yaml yparser = new Yaml();
         Reader yamlFile = null;
         try {
-            yamlFile = new FileReader("src/main/java/skipnode/"+fileName);
+            yamlFile = new FileReader(fileName);
         } catch (FileNotFoundException e) {
             e.printStackTrace();
             return null;

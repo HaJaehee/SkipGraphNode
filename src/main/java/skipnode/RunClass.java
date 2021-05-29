@@ -102,6 +102,7 @@ public class RunClass {
         String address = null;
         try {
             address = Inet4Address.getLocalHost().getHostAddress();
+            System.out.println("My local address is ");
         } catch (UnknownHostException e) {
             e.printStackTrace();
             return null;

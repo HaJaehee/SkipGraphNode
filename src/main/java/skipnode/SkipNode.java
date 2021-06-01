@@ -44,6 +44,13 @@ package skipnode;
  Implemented replication of resource into nodes having common name ID prefix
  Modifier : Jaehee ha (jaehee.ha@kaist.ac.kr)
 
+ Rev. history : 2021-06-01
+ Version : 1.1.1
+ Added static key-value Map instance.
+ Implemented static key-value Map features.
+ Static key-value Map is shared among the SkipGraph nodes.
+ Modifier : Jaehee ha (jaehee.ha@kaist.ac.kr)
+
  //TODO Are we need to delete a resource?
  //TODO name ID body가 000...인 node를 찾는 알고리즘이 필요함. (node list at highest level에서 찾으면 쉬움)
  */
@@ -61,6 +68,7 @@ import java.math.BigInteger;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.concurrent.LinkedBlockingDeque;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -82,6 +90,7 @@ public class SkipNode implements SkipNodeInterface {
     private final String redisPassword;
     private final int redisTimeout;
     private JedisPool jedisPool;
+    private static HashMap<String, String> kvMap;
 
     private MiddleLayer middleLayer;
 
@@ -96,7 +105,7 @@ public class SkipNode implements SkipNodeInterface {
 
     private static final Logger logger = LoggerFactory.getLogger(SkipNode.class);
 
-    public SkipNode(SkipNodeIdentity snID, LookupTable lookupTable, boolean isUsingRedis) {
+    public SkipNode(SkipNodeIdentity snID, LookupTable lookupTable, boolean isUsingRedis, HashMap kvMap) {
         this.address = snID.getAddress();
         this.port = snID.getPort();
         this.numID = snID.getNumID();
@@ -104,6 +113,7 @@ public class SkipNode implements SkipNodeInterface {
         this.lookupTable = lookupTable;
         this.storagePath = snID.getStoragePath();
         this.isUsingRedis = isUsingRedis;
+        this.kvMap = kvMap;
         if (isUsingRedis) {
             this.redisPoolConfig = null;
             this.redisAddress = "127.0.0.1";
@@ -122,6 +132,9 @@ public class SkipNode implements SkipNodeInterface {
         insertionLock.startInsertion();
     }
 
+    public SkipNode(SkipNodeIdentity snID, LookupTable lookupTable, boolean isUsingRedis) {
+        this(snID, lookupTable, isUsingRedis, null);
+    }
     public BigInteger getNumID() {
         return numID;
     }
@@ -411,7 +424,7 @@ public class SkipNode implements SkipNodeInterface {
      */
     @Override
     public String getResource(String resourceKey) {
-        String resourceQueryResult = handleJedisWithResourceKey(resourceKey, true, false, null);
+        String resourceQueryResult = handleKeyValueMapStorageWithResourceKey(resourceKey, true, false, null);
         return resourceQueryResult;
     }
 
@@ -422,11 +435,17 @@ public class SkipNode implements SkipNodeInterface {
      */
     @Override
     public SkipNodeIdentity storeResource(String resourceKey, String resourceValue) {
-        setJedisPool();
-        Jedis jedis = jedisPool.getResource();
-        jedis.set(resourceKey, resourceValue);
-        logger.debug("Resource Key: \""+ resourceKey +"\", value: \"" + resourceValue +"\" is stored into node ID: " + this.numID.toString(16));
-        jedis.close();
+        if (isUsingRedis) {
+            setJedisPool();
+            Jedis jedis = jedisPool.getResource();
+            jedis.set(resourceKey, resourceValue);
+            logger.debug("Resource Key: \"" + resourceKey + "\", value: \"" + resourceValue + "\" is stored into node ID: " + this.numID.toString(16));
+            jedis.close();
+        }
+        else if (kvMap != null) {
+            kvMap.put(resourceKey, resourceValue);
+            logger.debug("Resource Key: \"" + resourceKey + "\", value: \"" + resourceValue + "\" is stored into node ID: " + this.numID.toString(16));
+        }
         return getIdentity(null);
     }
 
@@ -466,7 +485,7 @@ public class SkipNode implements SkipNodeInterface {
         // If this is the node the search request is looking for, return its identity
         logger.debug("in "+ this.numID.toString(16)+" handler, key: " + numID.toString(16));
         if (numID.equals(this.numID)) {
-            return getIdentity(handleJedisWithNumID(numID, isGettingResource, isSettingResource, resourceValue));
+            return getIdentity(handleKeyValueMapStorageWithNumID(numID, isGettingResource, isSettingResource, resourceValue));
         }
         // Initialize the level to begin looking at
         int level = lookupTable.getNumLevels();
@@ -487,7 +506,7 @@ public class SkipNode implements SkipNodeInterface {
             // If the level is less than zero, then this node is the closest node to the numID being searched for from the right. Return.
             if (level < 0) {
 
-                return getIdentity(handleJedisWithNumID(numID, isGettingResource, isSettingResource, resourceValue));
+                return getIdentity(handleKeyValueMapStorageWithNumID(numID, isGettingResource, isSettingResource, resourceValue));
             }
             // Else, delegate the search to that node on the right
             SkipNodeIdentity delegateNode = lookupTable.getRight(level);
@@ -508,7 +527,7 @@ public class SkipNode implements SkipNodeInterface {
             // If the level is less than zero, then this node is the closest node to the numID being searched for from the left. Return.
             if (level < 0) {
 
-                return getIdentity(handleJedisWithNumID(numID, isGettingResource, isSettingResource, resourceValue));
+                return getIdentity(handleKeyValueMapStorageWithNumID(numID, isGettingResource, isSettingResource, resourceValue));
             }
             // Else, delegate the search to that node on the right
             SkipNodeIdentity delegateNode = lookupTable.getLeft(level);
@@ -523,7 +542,7 @@ public class SkipNode implements SkipNodeInterface {
      * @param isSettingResource
      * @param resourceValue
      */
-    private String handleJedisWithNumID (BigInteger numID, boolean isGettingResource, boolean isSettingResource, String resourceValue) {
+    private String handleKeyValueMapStorageWithNumID (BigInteger numID, boolean isGettingResource, boolean isSettingResource, String resourceValue) {
         String returnResourceQueryResult = null;
         if (isGettingResource && isUsingRedis) {
             setJedisPool();
@@ -532,6 +551,22 @@ public class SkipNode implements SkipNodeInterface {
             jedis.close();
         }
         else if (isSettingResource && resourceValue != null && isUsingRedis) {
+            for (SkipNodeIdentity i : lookupTable.getNodeListAtHighestLevel()) {
+                if (i.getNumID().compareTo(this.numID) == 0) {
+                    SkipNodeIdentity response = storeResource(numID.toString(16), resourceValue);
+                    //TODO response is not used in this version.
+                }
+                else {
+                    SkipNodeIdentity response = middleLayer.storeResource(i.getAddress(), i.getPort(), numID, resourceValue);
+                    //TODO response is not used in this version.
+                }
+            }
+            returnResourceQueryResult = null;
+        }
+        else if (isGettingResource && !isUsingRedis && kvMap != null) {
+            returnResourceQueryResult = kvMap.get(numID.toString(16));
+        }
+        else if (isSettingResource && !isUsingRedis && kvMap != null) {
             for (SkipNodeIdentity i : lookupTable.getNodeListAtHighestLevel()) {
                 if (i.getNumID().compareTo(this.numID) == 0) {
                     SkipNodeIdentity response = storeResource(numID.toString(16), resourceValue);
@@ -555,8 +590,8 @@ public class SkipNode implements SkipNodeInterface {
      * @param resourceValue
      * @return The String
      */
-    private String handleJedisWithResourceKey (String resourceKey, boolean isGettingResource, boolean isSettingResource, String resourceValue) {
-        return handleJedisWithNumID(new BigInteger(resourceKey, 16),isGettingResource,isSettingResource,resourceValue);
+    private String handleKeyValueMapStorageWithResourceKey (String resourceKey, boolean isGettingResource, boolean isSettingResource, String resourceValue) {
+        return handleKeyValueMapStorageWithNumID(new BigInteger(resourceKey, 16),isGettingResource,isSettingResource,resourceValue);
     }
 
     /**

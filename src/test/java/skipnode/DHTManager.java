@@ -44,20 +44,21 @@ import underlay.tcp.TCPUnderlay;
 
 import java.io.*;
 import java.math.BigInteger;
-import java.net.Inet4Address;
-import java.net.InetAddress;
-import java.net.InetSocketAddress;
-import java.net.UnknownHostException;
+import java.net.*;
 import java.nio.ByteBuffer;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.Date;
+import java.util.Enumeration;
+import java.util.HashMap;
 import java.util.Map;
 
 
 public final class DHTManager {
-    public static String[] swIPAddrList = {"10.0.10.1","10.0.20.1","10.0.30.1","10.0.40.1","10.0.50.1","10.64.0.1"};
-    public static short edgeSWList[] = {1,2,3,0,0,6};
+    //public static String[] swIPAddrList = {"10.0.10.1","10.0.20.1","10.0.30.1","10.0.40.1","10.0.50.1","10.64.0.1"};
+    //public static short edgeSWList[] = {1,2,3,0,0,6};
+    public static String[] swIPAddrList = {};
+    public static short edgeSWList[] = {};
     public static int swCount = swIPAddrList.length;
     //public static Channel clientCh;
     public static int PORT;
@@ -67,23 +68,40 @@ public final class DHTManager {
     public static boolean logging = false;
     public static boolean logFileOut = false;
     public static String[] input = null;
-    public static int ksvrPort = 8468;
+    public static int skipGraphServerPort = 8468;
     public static int ovsPort = 9999;
     public static Bootstrap bClient;
 
-
+    public static HashMap<String, String> kvMap= null;
 
     public static void main(String[] args) throws Exception {
 
         //input = new String[] {"0"}; // For test
+
+        String interfaceName = "eth0";
+        NetworkInterface networkInterface = NetworkInterface.getByName(interfaceName);
+        Enumeration<InetAddress> inetAddress = networkInterface.getInetAddresses();
+        InetAddress currentAddress;
+        String ip = null;
+        while(inetAddress.hasMoreElements())
+        {
+            currentAddress = inetAddress.nextElement();
+            if(currentAddress instanceof Inet4Address && !currentAddress.isLoopbackAddress())
+            {
+                ip = currentAddress.toString();
+                break;
+            }
+        }
+        kvMap = new HashMap<String, String>();
 
         if (input == null) {
             if ((args.length == 1) ||
                     (args.length == 2 && args[1].equals("logging"))){
                 System.out.println("The First node begins.");
                 //First node constructor requires its eth0 IP address, port number, and Locality ID.
+                //Also, first node constructor requires STATIC key-value Map object.
                 //TODO
-                skipGraphServer = new DHTServer(Integer.parseInt(args[0])-1);
+                skipGraphServer = new DHTServer(ip, 11099, null, kvMap);
                 System.out.println("Bootstrap is done.");
                 if(args.length == 2 && args[1].equals("logging")) {
                     logging = true;
@@ -101,8 +119,9 @@ public final class DHTManager {
                     (args.length == 4 && args[3].equals("logging"))) {
                 System.out.println("Connect to introducer node.");
                 //The others node constructor requires the introducer's IP address, port number, and its eth0 IP address, port number, and Locality ID.
+                //Also, the others node constructor requires STATIC key-value Map object.
                 //TODO
-                skipGraphServer = new DHTServer(Integer.parseInt(args[0])-1,args[1],Integer.parseInt(args[2]));
+                skipGraphServer = new DHTServer(args[1], Integer.parseInt(args[2]), ip, 11099 + Integer.parseInt(args[0]) - 1, null, kvMap);
                 System.out.println("Bootstrap is done.");
                 if(args.length == 4 && args[3].equals("logging")) {
                     logging = true;
@@ -124,13 +143,20 @@ public final class DHTManager {
         } else { // input != null, For test
             if (input.length == 1) {
                 if(DHTManager.logging)System.out.println("The First node begins.");
-                skipGraphServer = new DHTServer(Integer.parseInt(input[0])-1);
+                System.out.println("The First node begins.");
+                //First node constructor requires its eth0 IP address, port number, and Locality ID.
+                //Also, first node constructor requires STATIC key-value Map object.
+                //TODO
+                skipGraphServer = new DHTServer(ip, 11099, null, kvMap);
                 if(DHTManager.logging)System.out.println("Bootstrap is done.");
             }
             else if (input.length == 3) {
-                if(DHTManager.logging)System.out.println("Connect to master node.");
-                skipGraphServer = new DHTServer(Integer.parseInt(input[0])-1,input[1],Integer.parseInt(input[2]));
-                if(DHTManager.logging)System.out.println("Bootstrap is done.");
+                System.out.println("Connect to introducer node.");
+                //The others node constructor requires the introducer's IP address, port number, and its eth0 IP address, port number, and Locality ID.
+                //Also, the others node constructor requires STATIC key-value Map object.
+                //TODO
+                skipGraphServer = new DHTServer(args[1], Integer.parseInt(args[2]), ip, 11099 + Integer.parseInt(args[0]) - 1, null, kvMap);
+                System.out.println("Bootstrap is done.");
             }
             nodeIndex = Integer.parseInt(input[0]) - 1;
         }
@@ -705,9 +731,10 @@ class DHTServer {
     private static int LEVEL = 7;
     private static Jedis jedis = null;
 
-    private SkipNode ipAddressAwareNode = null;
-    private SkipNode localityAwareNode = null;
+    private static SkipNode ipAddressAwareNode = null;
+    private static SkipNode localityAwareNode = null;
 
+    private static String localityID = null;
 
     private static final byte OPCODE_BOOTUP = 0;
     private static final byte OPCODE_GET_HASH = 1;
@@ -734,25 +761,92 @@ class DHTServer {
 
 
     //TODO
-    public static void createIPAddressAwareNode () {
+    public static void createIPAddressAwareNode (String ip, int portNumber, HashMap kvMap) {
+        createIPAddressAwareNode(null, 0, ip, portNumber, kvMap);
+    }
 
+    public static void createIPAddressAwareNode (String introducerIP, int introducerPortNumber, String ip, int portNumber, HashMap kvMap) {
+        LookupTableFactory factory = new LookupTableFactory();
+        ConcurrentLookupTable table = (ConcurrentLookupTable) factory.createDefaultLookupTable(LEVEL);
+
+        BigInteger numId = null;
+        try {
+            numId = new BigInteger(sha256(ip), 16);
+        } catch (NoSuchAlgorithmException e) {
+            e.printStackTrace();
+        }
+        String[] ipSplit = ip.split("\\.");
+        String nameId = "";
+        for (String ipInteger : ipSplit) {
+            Integer item = Integer.parseInt(ipInteger);
+            nameId = nameId + String.format("%8s", item.toString(2)).replaceAll(" ", "0");
+        }
+        SkipNodeIdentity identity = new SkipNodeIdentity(nameId, numId, ip, portNumber,null, null);
+
+        ipAddressAwareNode = new SkipNode(identity, table, false, kvMap);
+
+        Underlay underlay = new TCPUnderlay();
+        underlay.initialize(portNumber);
+        MiddleLayer middleLayer = new MiddleLayer(underlay, ipAddressAwareNode);
+        ipAddressAwareNode.setMiddleLayer(middleLayer);
+        underlay.setMiddleLayer(middleLayer);
+
+        ipAddressAwareNode.insert(introducerIP, introducerPortNumber);
     }
 
     //TODO
-    public static void createLocalityAwareNode () {
+    public static void createLocalityAwareNode (String introducerIP, int introducerPortNumber, String ip, int portNumber, String localityID, HashMap kvMap) {
+        LookupTableFactory factory = new LookupTableFactory();
+        ConcurrentLookupTable table = (ConcurrentLookupTable) factory.createDefaultLookupTable(LEVEL);
 
+        BigInteger numId = null;
+        try {
+            numId = new BigInteger(sha256(localityID), 16);
+        } catch (NoSuchAlgorithmException e) {
+            e.printStackTrace();
+        }
+        String[] ipSplit = ip.split("\\.");
+        String nameId = "";
+        for (String ipInteger : ipSplit) {
+            Integer item = Integer.parseInt(ipInteger);
+            nameId = nameId + String.format("%8s", item.toString(2)).replaceAll(" ", "0");
+        }
+        nameId = localityID + nameId;
+        SkipNodeIdentity identity = new SkipNodeIdentity(nameId, numId, ip, portNumber,null, null);
+
+        ipAddressAwareNode = new SkipNode(identity, table, false, kvMap);
+
+        Underlay underlay = new TCPUnderlay();
+        underlay.initialize(portNumber);
+        MiddleLayer middleLayer = new MiddleLayer(underlay, ipAddressAwareNode);
+        ipAddressAwareNode.setMiddleLayer(middleLayer);
+        underlay.setMiddleLayer(middleLayer);
+
+        ipAddressAwareNode.insert(introducerIP, introducerPortNumber);
+    }
+
+    public static void createLocalityAwareNode (String ip, int portNumber, String localityID, HashMap kvMap) {
+        createLocalityAwareNode(null, 0, ip, portNumber, localityID, kvMap);
     }
 
     //TODO
-    public DHTServer(int peerId) throws Exception {
+    public DHTServer(String ip, int portNumber, String localityID, HashMap kvMap) throws Exception {
 
+        createIPAddressAwareNode(ip, portNumber, kvMap);
+        if (localityID != null) {
+            this.localityID = localityID;
+            createLocalityAwareNode(ip, portNumber, localityID, kvMap);
+        }
     }
 
     //TODO
-    public DHTServer(int peerId, String mIP, int port) throws Exception {
-
+    public DHTServer(String introducerIP, int introducerPortNumber, String ip, int portNumber, String localityID, HashMap kvMap) throws Exception {
+        createIPAddressAwareNode(introducerIP, introducerPortNumber, ip, portNumber, kvMap);
+        if (localityID != null) {
+            this.localityID = localityID;
+            createLocalityAwareNode(introducerIP, introducerPortNumber, ip, portNumber, localityID, kvMap);
+        }
     }
-
 
     static String sha256(String input) throws NoSuchAlgorithmException {
         MessageDigest mDigest = MessageDigest.getInstance("SHA-256");
@@ -774,6 +868,14 @@ class DHTServer {
             //In this case, input is a string of hostIP:port
             String strIP = input.split(":")[0];
             String firstSHA = sha256(strIP);
+            if (localityID != null) {
+                String value = localityAwareNode.getResourceByNameID(localityID, firstSHA);
+                if (value != null) {
+                    //TODO
+                    //DO SOMETHING
+                }
+            }
+
             FutureDHT futureDHT = peer.get(Number160.createHash(firstSHA)).start();
             futureDHT.addListener(new BaseFutureAdapter<FutureDHT>() {
                 private byte lswitchNum = switchNum;

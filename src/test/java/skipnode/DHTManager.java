@@ -81,6 +81,8 @@ public final class DHTManager {
             if ((args.length == 1) ||
                     (args.length == 2 && args[1].equals("logging"))){
                 System.out.println("The First node begins.");
+                //First node constructor requires its eth0 IP address, port number, and Locality ID.
+                //TODO
                 skipGraphServer = new DHTServer(Integer.parseInt(args[0])-1);
                 System.out.println("Bootstrap is done.");
                 if(args.length == 2 && args[1].equals("logging")) {
@@ -97,7 +99,9 @@ public final class DHTManager {
             }
             else if ((args.length == 3) ||
                     (args.length == 4 && args[3].equals("logging"))) {
-                System.out.println("Connect to master node.");
+                System.out.println("Connect to introducer node.");
+                //The others node constructor requires the introducer's IP address, port number, and its eth0 IP address, port number, and Locality ID.
+                //TODO
                 skipGraphServer = new DHTServer(Integer.parseInt(args[0])-1,args[1],Integer.parseInt(args[2]));
                 System.out.println("Bootstrap is done.");
                 if(args.length == 4 && args[3].equals("logging")) {
@@ -728,11 +732,24 @@ class DHTServer {
 
     private static final int LM_HDR_LENGTH = 32;
 
+
+    //TODO
     public static void createIPAddressAwareNode () {
 
     }
 
+    //TODO
     public static void createLocalityAwareNode () {
+
+    }
+
+    //TODO
+    public DHTServer(int peerId) throws Exception {
+
+    }
+
+    //TODO
+    public DHTServer(int peerId, String mIP, int port) throws Exception {
 
     }
 

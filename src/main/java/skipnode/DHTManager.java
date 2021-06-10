@@ -107,6 +107,9 @@ public final class DHTManager {
         if (input == null) {
             if ((args.length == 3) ||
                     (args.length == 4 && args[3].equals("logging"))){
+                if(args.length == 4 && args[3].equals("logging")) {
+                    logging = true;
+                }
                 System.out.println("The First node begins.");
                 //First node constructor requires its eth0 IP address, port number, and Locality ID.
                 //Also, first node constructor requires STATIC key-value Map object.
@@ -119,20 +122,22 @@ public final class DHTManager {
 
                 skipGraphServer = new DHTServer(ip, DEFAULT_DHT_PORT+(edgeNum*100)+dhtNum, localityID, kvMap);
                 System.out.println("Insert is done.");
-                if(args.length == 4 && args[3].equals("logging")) {
-                    logging = true;
-                }
+
             }
             else if ((args.length == 2 && args[1].equals("reset")) ||
                     (args.length == 3 && args[1].equals("reset") && args[2].equals("logging"))) {
-                System.out.println("Reset switch.");
-                justReset = true;
                 if(args.length == 3 && args[2].equals("logging")) {
                     logging = true;
                 }
+                System.out.println("Reset switch.");
+                justReset = true;
+
             }
             else if ((args.length == 5) ||
                     (args.length == 6 && args[5].equals("logging"))) {
+                if(args.length == 6 && args[5].equals("logging")) {
+                    logging = true;
+                }
                 System.out.println("Connect to introducer node.");
                 //The others node constructor requires the introducer's IP address, port number, and its eth0 IP address, port number, and Locality ID.
                 //Also, the others node constructor requires STATIC key-value Map object.
@@ -146,9 +151,7 @@ public final class DHTManager {
                     localityID = null;
                 skipGraphServer = new DHTServer(introducerIP, introducerPort, ip, DEFAULT_DHT_PORT+(100*edgeNum)+dhtNum, localityID, kvMap);
                 System.out.println("Bootstrap is done.");
-                if(args.length == 6 && args[5].equals("logging")) {
-                    logging = true;
-                }
+
             }
             else{
                 if(DHTManager.logging){
@@ -873,10 +876,7 @@ class DHTServer {
         localityAwareNode.setMiddleLayer(middleLayer);
         underlay.setMiddleLayer(middleLayer);
 
-        System.out.println("??????");
-        //localityAwareNode.insert(null,0);
         localityAwareNode.insert(introducerIP, introducerPortNumber);
-        System.out.println("stuck?");
     }
 
     public void createLocalityAwareNode (String ip, int portNumber, String localityID, HashMap kvMap) {

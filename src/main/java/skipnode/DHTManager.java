@@ -22,6 +22,11 @@ package skipnode;
  Version : 1.1.1
  Modified to use SkipGraph.
  Modifier : Jaehee ha (jaehee.ha@kaist.ac.kr)
+
+ Rev. history : 2021-06-10
+ Version : 1.1.2
+ First prototype implementation.
+ Modifier : Jaehee ha (jaehee.ha@kaist.ac.kr)
  */
 /* -------------------------------------------------------- */
 
@@ -48,10 +53,7 @@ import java.net.*;
 import java.nio.ByteBuffer;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
-import java.util.Date;
-import java.util.Enumeration;
-import java.util.HashMap;
-import java.util.Map;
+import java.util.*;
 
 
 public final class DHTManager {
@@ -68,9 +70,14 @@ public final class DHTManager {
     public static boolean logging = false;
     public static boolean logFileOut = false;
     public static String[] input = null;
-    public static int skipGraphServerPort = 8468;
+    //public static int skipGraphServerPort = 8468;
     public static int ovsPort = 9999;
     public static Bootstrap bClient;
+    public static final int DEFAULT_DHT_PORT = 21099;
+    public static final int DEFAULT_DHT_MNG_PORT = 30001;
+    public static int edgeNum = 0;
+    public static int dhtNum = 0;
+    public static String localityID = null;
 
     public static HashMap<String, String> kvMap= null;
 
@@ -92,18 +99,27 @@ public final class DHTManager {
                 break;
             }
         }
+
+        ip = "172.30.1.41";
+
         kvMap = new HashMap<String, String>();
 
         if (input == null) {
-            if ((args.length == 1) ||
-                    (args.length == 2 && args[1].equals("logging"))){
+            if ((args.length == 3) ||
+                    (args.length == 4 && args[3].equals("logging"))){
                 System.out.println("The First node begins.");
                 //First node constructor requires its eth0 IP address, port number, and Locality ID.
                 //Also, first node constructor requires STATIC key-value Map object.
                 //TODO
-                skipGraphServer = new DHTServer(ip, 11099, null, kvMap);
-                System.out.println("Bootstrap is done.");
-                if(args.length == 2 && args[1].equals("logging")) {
+                edgeNum = Integer.parseInt(args[0]);
+                dhtNum = Integer.parseInt(args[2]);
+                localityID = args[1];
+                if (localityID.equals("none"))
+                    localityID = null;
+
+                skipGraphServer = new DHTServer(ip, DEFAULT_DHT_PORT+(edgeNum*100)+dhtNum, localityID, kvMap);
+                System.out.println("Insert is done.");
+                if(args.length == 4 && args[3].equals("logging")) {
                     logging = true;
                 }
             }
@@ -115,51 +131,62 @@ public final class DHTManager {
                     logging = true;
                 }
             }
-            else if ((args.length == 3) ||
-                    (args.length == 4 && args[3].equals("logging"))) {
+            else if ((args.length == 5) ||
+                    (args.length == 6 && args[5].equals("logging"))) {
                 System.out.println("Connect to introducer node.");
                 //The others node constructor requires the introducer's IP address, port number, and its eth0 IP address, port number, and Locality ID.
                 //Also, the others node constructor requires STATIC key-value Map object.
                 //TODO
-                skipGraphServer = new DHTServer(args[1], Integer.parseInt(args[2]), ip, 11099 + Integer.parseInt(args[0]) - 1, null, kvMap);
+                String introducerIP = args[3];
+                int introducerPort = Integer.parseInt(args[4]);
+                edgeNum = Integer.parseInt(args[0]);
+                dhtNum = Integer.parseInt(args[2]);
+                localityID = args[1];
+                if (localityID.equals("none"))
+                    localityID = null;
+                skipGraphServer = new DHTServer(introducerIP, introducerPort, ip, DEFAULT_DHT_PORT+(100*edgeNum)+dhtNum, localityID, kvMap);
                 System.out.println("Bootstrap is done.");
-                if(args.length == 4 && args[3].equals("logging")) {
+                if(args.length == 6 && args[5].equals("logging")) {
                     logging = true;
                 }
             }
             else{
                 if(DHTManager.logging){
                     System.out.println("Ambiguous Input.");
-                    System.out.println("Usage: java DHTManager [switchNum]");
-                    System.out.println("Usage: java DHTManager [switchNum] [bootstrap ip] [bootstrap port]");
-                    System.out.println("Usage: java DHTManager [switchNum] reset");
-                    System.out.println("Usage: java DHTManager [switchNum] logging");
-                    System.out.println("Usage: java DHTManager [switchNum] [bootstrap ip] [bootstrap port] logging");
-                    System.out.println("Usage: java DHTManager [switchNum] reset logging");
+                    System.out.println("Usage: JAVA DHTManager [switch num] [locality id] [DHT node num]");
+                    System.out.println("Usage: JAVA DHTManager [switch num] [locality id] [DHT node num] logging");
+                    System.out.println("Usage: java DHTManager [switch num] [locality id] [DHT node num] [introducer ip] [introducer port] ");
+                    System.out.println("Usage: java DHTManager [switch num] [locality id] [DHT node num] [introducer ip] [introducer port] logging");
+                    System.out.println("Usage: java DHTManager [switch num] reset");
+                    System.out.println("Usage: java DHTManager [switch num] reset logging");
+                    System.out.println("0 <= DHT node num < 50");
                 }
                 return;
             }
-            nodeIndex = Integer.parseInt(args[0]) - 1;
-        } else { // input != null, For test
-            if (input.length == 1) {
-                if(DHTManager.logging)System.out.println("The First node begins.");
-                System.out.println("The First node begins.");
-                //First node constructor requires its eth0 IP address, port number, and Locality ID.
-                //Also, first node constructor requires STATIC key-value Map object.
-                //TODO
-                skipGraphServer = new DHTServer(ip, 11099, null, kvMap);
-                if(DHTManager.logging)System.out.println("Bootstrap is done.");
-            }
-            else if (input.length == 3) {
-                System.out.println("Connect to introducer node.");
-                //The others node constructor requires the introducer's IP address, port number, and its eth0 IP address, port number, and Locality ID.
-                //Also, the others node constructor requires STATIC key-value Map object.
-                //TODO
-                skipGraphServer = new DHTServer(args[1], Integer.parseInt(args[2]), ip, 11099 + Integer.parseInt(args[0]) - 1, null, kvMap);
-                System.out.println("Bootstrap is done.");
-            }
-            nodeIndex = Integer.parseInt(input[0]) - 1;
+            int edgeNum = Integer.parseInt(args[0]);
+            int dhtNum = Integer.parseInt(args[2]);
+            nodeIndex = (100*edgeNum) + dhtNum;
         }
+//        else { // input != null, only for test
+//            if (input.length == 1) {
+//                if(DHTManager.logging)System.out.println("The First node begins.");
+//                System.out.println("The First node begins.");
+//                //First node constructor requires its eth0 IP address, port number, and Locality ID.
+//                //Also, first node constructor requires STATIC key-value Map object.
+//                //TODO
+//                skipGraphServer = new DHTServer(ip, 11099, null, kvMap);
+//                if(DHTManager.logging)System.out.println("Bootstrap is done.");
+//            }
+//            else if (input.length == 3) {
+//                System.out.println("Connect to introducer node.");
+//                //The others node constructor requires the introducer's IP address, port number, and its eth0 IP address, port number, and Locality ID.
+//                //Also, the others node constructor requires STATIC key-value Map object.
+//                //TODO
+//                skipGraphServer = new DHTServer(args[1], Integer.parseInt(args[2]), ip, 11099 + Integer.parseInt(args[0]) - 1, null, kvMap);
+//                System.out.println("Bootstrap is done.");
+//            }
+//            nodeIndex = Integer.parseInt(input[0]) - 1;
+//        }
 
         EventLoopGroup groupClient = new NioEventLoopGroup();
         bClient = new Bootstrap();
@@ -174,7 +201,8 @@ public final class DHTManager {
         // This port number is used for an UDP socket server.
         // DHTManagerHandler extends SimpleChannelInboundHandler which is used for an UDP socket server.
         // DHTManagerHandler communicates with its OvS kernel module.
-        PORT = 10001 + nodeIndex;
+        PORT = DEFAULT_DHT_MNG_PORT + nodeIndex;
+        System.out.println("DHT Manager listen: "+PORT);
 
         Bootstrap b = new Bootstrap();
         EventLoopGroup group = new NioEventLoopGroup();
@@ -728,11 +756,11 @@ class ClientHandler extends SimpleChannelInboundHandler<DatagramPacket> {
 }
 
 class DHTServer {
-    private static int LEVEL = 7;
+    private static int LEVEL = 5;
     private static Jedis jedis = null;
 
-    private static SkipNode ipAddressAwareNode = null;
-    private static SkipNode localityAwareNode = null;
+    private SkipNode ipAddressAwareNode = null;
+    private SkipNode localityAwareNode = null;
 
     private static String localityID = null;
 
@@ -761,26 +789,40 @@ class DHTServer {
 
 
     //TODO
-    public static void createIPAddressAwareNode (String ip, int portNumber, HashMap kvMap) {
+    public void createIPAddressAwareNode (String ip, int portNumber, HashMap kvMap) {
         createIPAddressAwareNode(null, 0, ip, portNumber, kvMap);
     }
 
-    public static void createIPAddressAwareNode (String introducerIP, int introducerPortNumber, String ip, int portNumber, HashMap kvMap) {
+    //DUPLICATION CHECK
+    public void createIPAddressAwareNode (String introducerIP, int introducerPortNumber, String ip, int portNumber, HashMap kvMap) {
         LookupTableFactory factory = new LookupTableFactory();
         ConcurrentLookupTable table = (ConcurrentLookupTable) factory.createDefaultLookupTable(LEVEL);
 
         BigInteger numId = null;
         try {
-            numId = new BigInteger(sha256(ip), 16);
+            numId = new BigInteger(sha256(ip+":"+portNumber), 16);
         } catch (NoSuchAlgorithmException e) {
             e.printStackTrace();
         }
         String[] ipSplit = ip.split("\\.");
         String nameId = "";
-        for (String ipInteger : ipSplit) {
-            Integer item = Integer.parseInt(ipInteger);
-            nameId = nameId + String.format("%8s", item.toString(2)).replaceAll(" ", "0");
-        }
+        //ONLY USE THIRD IP FIELD 8 bits FOR Prefix
+        Integer item = Integer.parseInt(ipSplit[2]);
+        nameId = "1" + String.format("%8s", Integer.toBinaryString(item)).replaceAll(" ", "0").substring(1);
+
+        //name ID body
+        item = Integer.parseInt(ipSplit[3]);
+        nameId = nameId + String.format("%8s", Integer.toBinaryString(item)).replaceAll(" ", "0");
+
+        //Supposed to randomly generated.
+        item = (100*DHTManager.edgeNum)+DHTManager.dhtNum;
+        nameId = nameId + String.format("%16s", Integer.toBinaryString(item)).replaceAll(" ", "0");
+        //Length of nameID is finally 32.
+
+        System.out.println("IA name ID: " + nameId + " len: " + nameId.length());
+        System.out.println("IA port: "+portNumber);
+
+        if(DHTManager.logging)System.out.println("IA port:" + portNumber);
         SkipNodeIdentity identity = new SkipNodeIdentity(nameId, numId, ip, portNumber,null, null);
 
         ipAddressAwareNode = new SkipNode(identity, table, false, kvMap);
@@ -795,51 +837,62 @@ class DHTServer {
     }
 
     //TODO
-    public static void createLocalityAwareNode (String introducerIP, int introducerPortNumber, String ip, int portNumber, String localityID, HashMap kvMap) {
+    //DUPLICATION CHECK
+    public void createLocalityAwareNode (String introducerIP, int introducerPortNumber, String ip, int portNumber, String localityID, HashMap kvMap) {
         LookupTableFactory factory = new LookupTableFactory();
         ConcurrentLookupTable table = (ConcurrentLookupTable) factory.createDefaultLookupTable(LEVEL);
 
+        String nameId = "";
+
+        nameId = localityID;
+        //Supposed to randomly generated.
+        int item = (100*DHTManager.edgeNum)+DHTManager.dhtNum;
+
+        nameId = nameId + "000" + String.format("%16s", Integer.toBinaryString(item)).replaceAll(" ", "0");
+        //Length of nameID is finally 32.
+        System.out.println("LA name ID: " + nameId + " len: " + nameId.length());
+
         BigInteger numId = null;
+
         try {
-            numId = new BigInteger(sha256(localityID), 16);
+            numId = new BigInteger(sha256(nameId), 16);
         } catch (NoSuchAlgorithmException e) {
             e.printStackTrace();
         }
-        String[] ipSplit = ip.split("\\.");
-        String nameId = "";
-        for (String ipInteger : ipSplit) {
-            Integer item = Integer.parseInt(ipInteger);
-            nameId = nameId + String.format("%8s", item.toString(2)).replaceAll(" ", "0");
-        }
-        nameId = localityID + nameId;
+        //Port number MUST not be duplicated with IP address aware approach
+        //Therefore we added 50 to portNumber
+        portNumber += 50;
+        System.out.println("LA port: " + portNumber);
         SkipNodeIdentity identity = new SkipNodeIdentity(nameId, numId, ip, portNumber,null, null);
 
-        ipAddressAwareNode = new SkipNode(identity, table, false, kvMap);
+        localityAwareNode = new SkipNode(identity, table, false, kvMap);
 
         Underlay underlay = new TCPUnderlay();
         underlay.initialize(portNumber);
-        MiddleLayer middleLayer = new MiddleLayer(underlay, ipAddressAwareNode);
-        ipAddressAwareNode.setMiddleLayer(middleLayer);
+        MiddleLayer middleLayer = new MiddleLayer(underlay, localityAwareNode);
+        localityAwareNode.setMiddleLayer(middleLayer);
         underlay.setMiddleLayer(middleLayer);
 
-        ipAddressAwareNode.insert(introducerIP, introducerPortNumber);
+        System.out.println("??????");
+        //localityAwareNode.insert(null,0);
+        localityAwareNode.insert(introducerIP, introducerPortNumber);
+        System.out.println("stuck?");
     }
 
-    public static void createLocalityAwareNode (String ip, int portNumber, String localityID, HashMap kvMap) {
+    public void createLocalityAwareNode (String ip, int portNumber, String localityID, HashMap kvMap) {
         createLocalityAwareNode(null, 0, ip, portNumber, localityID, kvMap);
     }
 
-    //TODO
     public DHTServer(String ip, int portNumber, String localityID, HashMap kvMap) throws Exception {
 
         createIPAddressAwareNode(ip, portNumber, kvMap);
         if (localityID != null) {
             this.localityID = localityID;
-            createLocalityAwareNode(ip, portNumber, localityID, kvMap);
+            //Insert this node into DHT network.
+            createLocalityAwareNode(ip, portNumber, ip, portNumber, localityID, kvMap);
         }
     }
 
-    //TODO
     public DHTServer(String introducerIP, int introducerPortNumber, String ip, int portNumber, String localityID, HashMap kvMap) throws Exception {
         createIPAddressAwareNode(introducerIP, introducerPortNumber, ip, portNumber, kvMap);
         if (localityID != null) {
@@ -864,6 +917,8 @@ class DHTServer {
         final Date date = new Date();
         final long starttime = date.getTime();
 
+        //MUST TODO
+        /**
         if(opCode == OPCODE_GET_HASH){
             //In this case, input is a string of hostIP:port
             String strIP = input.split(":")[0];
@@ -875,6 +930,7 @@ class DHTServer {
                     //DO SOMETHING
                 }
             }
+
 
             FutureDHT futureDHT = peer.get(Number160.createHash(firstSHA)).start();
             futureDHT.addListener(new BaseFutureAdapter<FutureDHT>() {
@@ -1243,26 +1299,28 @@ class DHTServer {
                                 }
                             }
                         }
-                    } /*else {
-
-						byte[] sendData = new byte[42];//Jaehee modified 160720
-
-						sendData[0] = OPCODE_QUERIED_HASH;
-						sendData[1] = switchNum;
-						for (int i = 0; i < 4;i++){
-							sendData[2+(3-i)] = byteHostIP[i];
-							sendData[38+i] = 0x00;
-						}//Jaehee modified 160720
-						for (int i = 0; i < LM_HDR_LENGTH;i++){//Jaehee modified 160720
-							sendData[6+i]=  hashedIP[i];
-						}
-
-				        Channel clientCh = DHTManager.bClient.bind(0).sync().channel();
-						clientCh.writeAndFlush(
-				                        new DatagramPacket(Unpooled.copiedBuffer(sendData), new InetSocketAddress("localhost",DHTManager.ovsPort))).addListener(ChannelFutureListener.CLOSE);
-
-						if(DHTManager.logging)System.out.println("Get Failed");
-					}*/
+                    }
+                //NOT TODO
+//                else {
+//
+//						byte[] sendData = new byte[42];//Jaehee modified 160720
+//
+//						sendData[0] = OPCODE_QUERIED_HASH;
+//						sendData[1] = switchNum;
+//						for (int i = 0; i < 4;i++){
+//							sendData[2+(3-i)] = byteHostIP[i];
+//							sendData[38+i] = 0x00;
+//						}//Jaehee modified 160720
+//						for (int i = 0; i < LM_HDR_LENGTH;i++){//Jaehee modified 160720
+//							sendData[6+i]=  hashedIP[i];
+//						}
+//
+//				        Channel clientCh = DHTManager.bClient.bind(0).sync().channel();
+//						clientCh.writeAndFlush(
+//				                        new DatagramPacket(Unpooled.copiedBuffer(sendData), new InetSocketAddress("localhost",DHTManager.ovsPort))).addListener(ChannelFutureListener.CLOSE);
+//
+//						if(DHTManager.logging)System.out.println("Get Failed");
+//					}
 
 
 
@@ -1356,6 +1414,7 @@ class DHTServer {
         } else {
             if(DHTManager.logging)System.out.println("Logical Error");
         }
+        */
     }
 
     public void store(String strHostIP, byte[] hostIP, byte[] switchIP) throws IOException, NoSuchAlgorithmException {
@@ -1379,8 +1438,9 @@ class DHTServer {
 
         String firstSHA = sha256(strHostIP);
 
-        if(DHTManager.logging)System.out.println("key: "+Number160.createHash(firstSHA)+", data: "+jsonString.toString());
-        peer.put(Number160.createHash(firstSHA)).setData(new Data(jsonString.toString())).start();
+        //TODO
+        //if(DHTManager.logging)System.out.println("key: "+Number160.createHash(firstSHA)+", data: "+jsonString.toString());
+        //peer.put(Number160.createHash(firstSHA)).setData(new Data(jsonString.toString())).start();
     }
 
     public void store(String originalHostIPPort, String visitingTargetHostIPPort, byte[] visitingTargetHostIP, byte[] switchIP, byte[] homeTargetHostIP) throws IOException, NoSuchAlgorithmException {
@@ -1407,8 +1467,9 @@ class DHTServer {
 
         String firstSHA = sha256(originalHostIPPort);
 
-        if(DHTManager.logging)System.out.println("key: "+Number160.createHash(firstSHA)+", data: "+jsonString.toString());
-        peer.put(Number160.createHash(firstSHA)).setData(new Data(jsonString.toString())).start();
+        //TODO
+//        if(DHTManager.logging)System.out.println("key: "+Number160.createHash(firstSHA)+", data: "+jsonString.toString());
+//        peer.put(Number160.createHash(firstSHA)).setData(new Data(jsonString.toString())).start();
 
 
         String firstSHA_2 = sha256(visitingTargetHostIPPort);
@@ -1430,8 +1491,9 @@ class DHTServer {
 			strData += String.format("%02x", homeTargetHostIP[i]);
 		jsonString2.append("\""+HOME_TARGET_HOST+"\" : \""+ strData +"\" }");*/
 
-        if(DHTManager.logging)System.out.println("key: "+Number160.createHash(firstSHA_2)+", data: "+jsonString.toString());
-        peer.put(Number160.createHash(firstSHA_2)).setData(new Data(jsonString.toString())).start();
+        //TODO
+//        if(DHTManager.logging)System.out.println("key: "+Number160.createHash(firstSHA_2)+", data: "+jsonString.toString());
+//        peer.put(Number160.createHash(firstSHA_2)).setData(new Data(jsonString.toString())).start();
         jsonString.setLength(0);
         //jsonString2.setLength(0);
     }
@@ -1464,8 +1526,9 @@ class DHTServer {
 
         String firstSHA = sha256(strHomeCTIP);
 
-        if(DHTManager.logging)System.out.println("key: "+Number160.createHash(firstSHA)+", data: "+jsonString.toString());
-        peer.put(Number160.createHash(firstSHA)).setData(new Data(jsonString.toString())).start();
+        //TODO
+//        if(DHTManager.logging)System.out.println("key: "+Number160.createHash(firstSHA)+", data: "+jsonString.toString());
+//        peer.put(Number160.createHash(firstSHA)).setData(new Data(jsonString.toString())).start();
 
 
 
@@ -1488,8 +1551,9 @@ class DHTServer {
 
         String firstSHA_2 = sha256(strSwitchedIP);
 
-        if(DHTManager.logging)System.out.println("key: "+Number160.createHash(firstSHA_2)+", data: "+jsonString.toString());
-        peer.put(Number160.createHash(firstSHA_2)).setData(new Data(jsonString.toString())).start();
+        //TODO
+//        if(DHTManager.logging)System.out.println("key: "+Number160.createHash(firstSHA_2)+", data: "+jsonString.toString());
+//        peer.put(Number160.createHash(firstSHA_2)).setData(new Data(jsonString.toString())).start();
         jsonString.setLength(0);
     }
 	/*

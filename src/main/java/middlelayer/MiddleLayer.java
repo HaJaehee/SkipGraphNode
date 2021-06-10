@@ -161,10 +161,16 @@ public class MiddleLayer {
                 return new IdentityResponse(identity);
             case FindLadder:
                 // Can only be invoked when unlocked or by the lock owner.
-                if(overlay.isLocked() && !overlay.isLockedBy(request.senderAddress, request.senderPort))
+                if(overlay.isLocked() && !overlay.isLockedBy(request.senderAddress, request.senderPort)) {
+                    //210610
+//                    System.out.println("overlay is locked by someone else");
+//                    System.out.println("Requester address: " + request.senderAddress + " port: " + request.senderPort);
                     return new Response(true);
+                }
                 identity = overlay.findLadder(((FindLadderRequest) request).level, ((FindLadderRequest) request).direction,
                         ((FindLadderRequest) request).target);
+                //210610
+//                System.out.println("Found identity: "+identity.getNumID());
                 return new IdentityResponse(identity);
             case AnnounceNeighbor:
                 overlay.announceNeighbor(((AnnounceNeighborRequest) request).newNeighbor, ((AnnounceNeighborRequest) request).minLevel);
@@ -305,7 +311,11 @@ public class MiddleLayer {
 
     public SkipNodeIdentity findLadder(String destinationAddress, int port, int level, int direction, String target) {
         // Send the request through the underlay
+        //210610
+//        System.out.println("Sending FindLadderRequest: "+destinationAddress+":"+port);
         Response r = send(destinationAddress, port, new FindLadderRequest(level, direction, target));
+        //210610
+//        System.out.println("Response is arrived");
         return ((IdentityResponse) r).identity;
     }
 

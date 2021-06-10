@@ -264,7 +264,7 @@ public class SkipNode implements SkipNodeInterface {
             }
             if(newLeftNeighbor && !leftNeighbor.equals(LookupTable.EMPTY_NODE)) {
                 // Try to acquire the lock for the left neighbor.
-                logger.debug(getNumID().toString(16) + " is trying to acquire a lock from " + leftNeighbor.getNumID());
+                logger.debug(getNumID().toString(16) + " is trying to acquire a lock from " + leftNeighbor.getNumID().toString(16));
                 boolean acquired = middleLayer.tryAcquire(leftNeighbor.getAddress(), leftNeighbor.getPort(),
                         getIdentity(null), leftNeighbor.version);
                 if(!acquired) {
@@ -275,7 +275,7 @@ public class SkipNode implements SkipNodeInterface {
                 ownedLocks.add(new InsertionLock.NeighborInstance(leftNeighbor, level));
             }
             if(newRightNeighbor && !rightNeighbor.equals(LookupTable.EMPTY_NODE)) {
-                logger.debug(getNumID().toString(16) + " is trying to acquire a lock from " + rightNeighbor.getNumID());
+                logger.debug(getNumID().toString(16) + " is trying to acquire a lock from " + rightNeighbor.getNumID().toString(16));
                 // Try to acquire the lock for the right neighbor.
                 boolean acquired = middleLayer.tryAcquire(rightNeighbor.getAddress(), rightNeighbor.getPort(),
                         getIdentity(null), rightNeighbor.version);
@@ -335,6 +335,7 @@ public class SkipNode implements SkipNodeInterface {
             return false;
         }
         logger.debug(getNumID().toString(16) + " is being locked by " + requester.getNumID().toString(16) + " with provided version " + version);
+        logger.debug("Address: "+requester.getAddress() + " Port: " + requester.getPort());
         return true;
     }
 

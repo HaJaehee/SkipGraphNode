@@ -33,6 +33,13 @@ package skipnode;
  Bootstrap implementation is done.
  Modifier : Jaehee ha (jaehee.ha@kaist.ac.kr)
 
+
+ Rev. history : 2021-06-11
+ Version : 1.1.4
+ Functions, such as store()(put()) and get()(search()), implementation is done.
+ Testing store() is done.
+ Modifier : Jaehee ha (jaehee.ha@kaist.ac.kr)
+
  //TODO
  //store(put), get(search),
  */

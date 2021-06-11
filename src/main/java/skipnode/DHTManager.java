@@ -805,6 +805,8 @@ class DHTServer {
     private static final int VISITING_TARGET_HOST = 3;
     private static final int HOME_TARGET_HOST = 4;
     private static final int HOME_IP = 5;
+    private static final int LOCALITY_ID = 6;
+    private static final int LID_LIST = 7;
 
     private static final int LM_HDR_LENGTH = 32;
 
@@ -1556,13 +1558,23 @@ class DHTServer {
         for(int i=0; i < switchIP.length; i++)
             strData += String.format("%02x", switchIP[i]);
 
-        jsonString.append("\""+ES_IP+"\" : \""+ strData +"\" }");
+        jsonString.append("\""+ES_IP+"\" : \""+ strData +"\", ");
+
+        jsonString.append("\""+LOCALITY_ID+"\" : \""+ localityID + "\"}");
+
+        //TODO LID_LISt
 
 
         String firstSHA = sha256(strHostIP);
 
+
         //TODO
-        //if(DHTManager.logging)System.out.println("key: "+Number160.createHash(firstSHA)+", data: "+jsonString.toString());
+        if(DHTManager.logging)System.out.println("key: "+firstSHA+", data: "+jsonString.toString());
+        if(localityAwareNode != null) {
+            localityAwareNode.storeResource(firstSHA, jsonString.toString());
+        }
+        ipAddressAwareNode.storeResource(firstSHA, jsonString.toString());
+
         //peer.put(Number160.createHash(firstSHA)).setData(new Data(jsonString.toString())).start();
     }
 
@@ -1582,16 +1594,23 @@ class DHTServer {
             strData += String.format("%02x", switchIP[i]);
         jsonString.append("\""+ES_IP+"\" : \""+ strData +"\",");
 
+
         strData = "";
         for(int i=0; i < homeTargetHostIP.length ;i++)
             strData += String.format("%02x", homeTargetHostIP[i]);
-        jsonString.append("\""+HOME_TARGET_HOST+"\" : \""+ strData +"\" }");
+        jsonString.append("\""+HOME_TARGET_HOST+"\" : \""+ strData +"\",");
+
+        jsonString.append("\""+LOCALITY_ID+"\" : \""+ localityID + "\"}");
 
 
         String firstSHA = sha256(originalHostIPPort);
 
         //TODO
-//        if(DHTManager.logging)System.out.println("key: "+Number160.createHash(firstSHA)+", data: "+jsonString.toString());
+       if(DHTManager.logging)System.out.println("key: "+firstSHA+", data: "+jsonString.toString());
+        if(localityAwareNode != null) {
+            localityAwareNode.storeResource(firstSHA, jsonString.toString());
+        }
+        ipAddressAwareNode.storeResource(firstSHA, jsonString.toString());
 //        peer.put(Number160.createHash(firstSHA)).setData(new Data(jsonString.toString())).start();
 
 
@@ -1644,13 +1663,18 @@ class DHTServer {
         strData = "";
         for(int i=0; i < visitingTargetHostIP.length ;i++)
             strData += String.format("%02x", visitingTargetHostIP[i]);
-        jsonString.append("\""+VISITING_TARGET_HOST+"\" : \""+ strData +"\" }");
+        jsonString.append("\""+VISITING_TARGET_HOST+"\" : \""+ strData +"\",");
 
+        jsonString.append("\""+LOCALITY_ID+"\" : \""+ localityID + "\"}");
 
         String firstSHA = sha256(strHomeCTIP);
 
         //TODO
-//        if(DHTManager.logging)System.out.println("key: "+Number160.createHash(firstSHA)+", data: "+jsonString.toString());
+        if(DHTManager.logging)System.out.println("key: "+firstSHA+", data: "+jsonString.toString());
+        if(localityAwareNode != null) {
+            localityAwareNode.storeResource(firstSHA, jsonString.toString());
+        }
+        ipAddressAwareNode.storeResource(firstSHA, jsonString.toString());
 //        peer.put(Number160.createHash(firstSHA)).setData(new Data(jsonString.toString())).start();
 
 

@@ -42,6 +42,7 @@ package skipnode;
 
  //TODO
  //store(put), get(search),
+ //More sophisticated implementation of get()
  */
 /* -------------------------------------------------------- */
 

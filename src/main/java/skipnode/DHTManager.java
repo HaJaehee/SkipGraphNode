@@ -32,6 +32,9 @@ package skipnode;
  Version : 1.1.3
  Bootstrap implementation is done.
  Modifier : Jaehee ha (jaehee.ha@kaist.ac.kr)
+
+ //TODO
+ //store(put), get(search),
  */
 /* -------------------------------------------------------- */
 
@@ -806,12 +809,11 @@ class DHTServer {
 
     private static final int LM_HDR_LENGTH = 32;
 
-
-    //TODO
     public void createIPAddressAwareNode (String ip, int portNumber, HashMap kvMap) {
         createIPAddressAwareNode(null, 0, ip, portNumber, kvMap);
     }
 
+    //backlog
     //DUPLICATION CHECK
     public void createIPAddressAwareNode (String introducerIP, int introducerPortNumber, String ip, int portNumber, HashMap kvMap) {
         LookupTableFactory factory = new LookupTableFactory();
@@ -854,7 +856,7 @@ class DHTServer {
         ipAddressAwareNode.insert(introducerIP, introducerPortNumber);
     }
 
-    //TODO
+    //backlog
     //DUPLICATION CHECK
     public void createLocalityAwareNode (String introducerIP, int introducerPortNumber, String ip, int portNumber, String localityID, HashMap kvMap) {
         LookupTableFactory factory = new LookupTableFactory();
@@ -928,20 +930,21 @@ class DHTServer {
         return sb.toString();
     }
 
+    //TODO
     public void get(final int opCode, final String input, final byte switchNum, final byte[] byteHostIP, final byte[] hashedIP) throws ClassNotFoundException, IOException, NoSuchAlgorithmException {
 
         final Date date = new Date();
         final long starttime = date.getTime();
 
         //MUST TODO
-        /**
+
         if(opCode == OPCODE_GET_HASH){
             //In this case, input is a string of hostIP:port
             String strIP = input.split(":")[0];
             String firstSHA = sha256(strIP);
             if (localityID != null) {
                 String value = localityAwareNode.getResourceByNameID(localityID, firstSHA);
-                if (value != null) {
+                if (value != null) { //Hit
                     //TODO
                     //DO SOMETHING
                 }
@@ -1430,9 +1433,10 @@ class DHTServer {
         } else {
             if(DHTManager.logging)System.out.println("Logical Error");
         }
-        */
+
     }
 
+    //TODO
     public void store(String strHostIP, byte[] hostIP, byte[] switchIP) throws IOException, NoSuchAlgorithmException {
         //opCode == OPCODE_INFORM_CONNECTION
 

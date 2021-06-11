@@ -443,7 +443,7 @@ public class SkipNode implements SkipNodeInterface {
             logger.debug("Resource Key: \"" + resourceKey + "\", value: \"" + resourceValue + "\" is stored into node ID: " + this.numID.toString(16));
             jedis.close();
         }
-        else if (kvMap != null) {
+        else if (!isUsingRedis && kvMap != null) {
             kvMap.put(resourceKey, resourceValue);
             logger.debug("Resource Key: \"" + resourceKey + "\", value: \"" + resourceValue + "\" is stored into node ID: " + this.numID.toString(16));
         }
@@ -815,6 +815,21 @@ public class SkipNode implements SkipNodeInterface {
                 }
             }
             returnResourceQueryResult = null;
+        }
+        else if (isGettingResource && !isUsingRedis && kvMap != null) {
+            returnResourceQueryResult = kvMap.get(resourceKey);
+        }
+        else if (isSettingResource && resourceKey != null && resourceValue != null && !isUsingRedis && kvMap != null) {
+            for (SkipNodeIdentity i : lookupTable.getNodeListAtHighestLevel()) {
+                if (i.getNumID().compareTo(this.numID) == 0) {
+                    SkipNodeIdentity response = storeResource(resourceKey, resourceValue);
+                    //TODO response is not used in this version.
+                }
+                else {
+                    SkipNodeIdentity response = middleLayer.storeResource(i.getAddress(), i.getPort(), new BigInteger(resourceKey, 16), resourceValue);
+                    //TODO response is not used in this version.
+                }
+            }
         }
         return  returnResourceQueryResult;
     }

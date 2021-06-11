@@ -27,11 +27,14 @@ package skipnode;
  Version : 1.1.2
  First prototype implementation.
  Modifier : Jaehee ha (jaehee.ha@kaist.ac.kr)
+
+ Rev. history : 2021-06-11
+ Version : 1.1.3
+ Bootstrap implementation is done.
+ Modifier : Jaehee ha (jaehee.ha@kaist.ac.kr)
  */
 /* -------------------------------------------------------- */
 
-import com.google.gson.JsonObject;
-import com.google.gson.JsonParser;
 import io.netty.bootstrap.Bootstrap;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.Unpooled;
@@ -47,21 +50,30 @@ import redis.clients.jedis.Jedis;
 import underlay.Underlay;
 import underlay.tcp.TCPUnderlay;
 
-import java.io.*;
+import java.io.FileNotFoundException;
+import java.io.FileReader;
+import java.io.IOException;
+import java.io.Reader;
 import java.math.BigInteger;
 import java.net.*;
 import java.nio.ByteBuffer;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
-import java.util.*;
+import java.util.Date;
+import java.util.Enumeration;
+import java.util.HashMap;
+import java.util.Map;
 
 
 public final class DHTManager {
-    //public static String[] swIPAddrList = {"10.0.10.1","10.0.20.1","10.0.30.1","10.0.40.1","10.0.50.1","10.64.0.1"};
-    //public static short edgeSWList[] = {1,2,3,0,0,6};
-    public static String[] swIPAddrList = {};
-    public static short edgeSWList[] = {};
+
+    //210611 disabled
+
+    public static String[] swIPAddrList = {"10.0.10.1","10.0.20.1","10.0.30.1","10.0.40.1","10.0.50.1","10.64.0.1"};
+    public static short edgeSWList[] = {1,2,3,0,0,6};
     public static int swCount = swIPAddrList.length;
+
+
     //public static Channel clientCh;
     public static int PORT;
     public static int nodeIndex;
@@ -95,12 +107,13 @@ public final class DHTManager {
             currentAddress = inetAddress.nextElement();
             if(currentAddress instanceof Inet4Address && !currentAddress.isLoopbackAddress())
             {
-                ip = currentAddress.toString();
+                ip = currentAddress.toString().replaceAll("/", "");
+
                 break;
             }
         }
 
-        ip = "172.30.1.41";
+        //ip = "172.30.1.41";
 
         kvMap = new HashMap<String, String>();
 
@@ -249,6 +262,8 @@ class DHTManagerHandler extends SimpleChannelInboundHandler<DatagramPacket> {
     public DHTManagerHandler(int nodeIndex, boolean justReset, boolean logging) throws InterruptedException{
         super();
 
+        //210611 disabled
+        /*
         int sendBufLength = 6 + 2*DHTManager.swCount ;
         byte[] sendBuf = new byte[sendBufLength];
         if (justReset) {
@@ -268,6 +283,7 @@ class DHTManagerHandler extends SimpleChannelInboundHandler<DatagramPacket> {
             sendBuf[5] = (byte)0;
         }
         //Appends edge switch numbers to the byte array
+
         for (int i = 0; i < DHTManager.swCount; i++) {
             if (DHTManager.edgeSWList[i] != 0) {
                 byte[] swBytes = ByteBuffer.allocate(2).putShort((short) (DHTManager.edgeSWList[i] - 1)).array();
@@ -296,7 +312,7 @@ class DHTManagerHandler extends SimpleChannelInboundHandler<DatagramPacket> {
             Thread.sleep(2000);
             System.exit(0);
         }
-
+        */
         System.out.println("Port "+DHTManager.PORT+" is opened.");
     }
 
@@ -825,7 +841,6 @@ class DHTServer {
         System.out.println("IA name ID: " + nameId + " len: " + nameId.length());
         System.out.println("IA port: "+portNumber);
 
-        if(DHTManager.logging)System.out.println("IA port:" + portNumber);
         SkipNodeIdentity identity = new SkipNodeIdentity(nameId, numId, ip, portNumber,null, null);
 
         ipAddressAwareNode = new SkipNode(identity, table, false, kvMap);
@@ -876,6 +891,7 @@ class DHTServer {
         localityAwareNode.setMiddleLayer(middleLayer);
         underlay.setMiddleLayer(middleLayer);
 
+        System.out.println("introducer IP: " + introducerIP + " introducer port: " + introducerPortNumber);
         localityAwareNode.insert(introducerIP, introducerPortNumber);
     }
 

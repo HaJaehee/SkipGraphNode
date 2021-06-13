@@ -51,6 +51,7 @@ package skipnode;
  TODO
  store(put), get(search),
  More sophisticated implementation of get()
+ AR_LIST is actually needed?
  */
 /* -------------------------------------------------------- */
 
@@ -109,7 +110,13 @@ public final class DHTManager {
 
     public static HashMap<String, String> kvMap= null;
 
-    public static void main(String[] args) throws Exception {
+    private String[] args = null;
+
+    public DHTManager (String[] args){
+        this.args = args;
+    }
+
+    public void run() throws Exception {
 
         //input = new String[] {"0"}; // For test
 

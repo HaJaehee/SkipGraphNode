@@ -40,9 +40,17 @@ package skipnode;
  Testing store() is done.
  Modifier : Jaehee ha (jaehee.ha@kaist.ac.kr)
 
- //TODO
- //store(put), get(search),
- //More sophisticated implementation of get()
+
+ Rev. history : 2021-06-13
+ Version : 1.1.5
+ Testing simple locality-aware approach is done.
+ Operations OPCODE_INFORM_CONNECTION, OPCODE_GET_HASH tests are passed.
+ Switch number and ip list including function is implemented.
+ Modifier : Jaehee ha (jaehee.ha@kaist.ac.kr)
+
+ TODO
+ store(put), get(search),
+ More sophisticated implementation of get()
  */
 /* -------------------------------------------------------- */
 
@@ -69,20 +77,17 @@ import java.net.*;
 import java.nio.ByteBuffer;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
-import java.util.Date;
-import java.util.Enumeration;
-import java.util.HashMap;
-import java.util.Map;
+import java.util.*;
 
 
 public final class DHTManager {
 
     //210611 disabled
 
-    public static String[] swIPAddrList = {"10.0.10.1","10.0.20.1","10.0.30.1","10.0.40.1","10.0.50.1","10.64.0.1"};
-    public static short edgeSWList[] = {1,2,3,0,0,6};
-    public static int swCount = swIPAddrList.length;
-
+    public static ArrayList<String> swIPAddrList = new ArrayList<String>(Arrays.asList("10.0.10.1","10.0.20.1","10.0.30.1","10.0.40.1","10.0.50.1","10.64.0.1"));
+    public static Short[] edgeSWNum = {1,2,3,0,0,6};
+    public static ArrayList<Short> edgeSWList = new ArrayList<Short>(Arrays.asList(edgeSWNum));
+    public static int swCount = swIPAddrList.size();
 
     //public static Channel clientCh;
     public static int PORT;
@@ -91,6 +96,7 @@ public final class DHTManager {
     public static DHTServer skipGraphServer = null;
     public static boolean logging = false;
     public static boolean logFileOut = false;
+    public static boolean onEmulator = true;
     public static String[] input = null;
     //public static int skipGraphServerPort = 8468;
     public static int ovsPort = 9999;
@@ -123,7 +129,8 @@ public final class DHTManager {
             }
         }
 
-        ip = "172.30.1.41";
+        ip = "172.30.1.5";
+
 
         kvMap = new HashMap<String, String>();
 
@@ -144,7 +151,7 @@ public final class DHTManager {
                     localityID = null;
 
                 skipGraphServer = new DHTServer(ip, DEFAULT_DHT_PORT+(edgeNum*100)+dhtNum, localityID, kvMap);
-                System.out.println("Insert is done.");
+                System.out.println("Insertion is done.");
 
             }
             else if ((args.length == 2 && args[1].equals("reset")) ||
@@ -213,6 +220,28 @@ public final class DHTManager {
 //            }
 //            nodeIndex = Integer.parseInt(input[0]) - 1;
 //        }
+
+        if (onEmulator) {
+            swIPAddrList = new ArrayList<String>();
+            edgeSWList = new ArrayList<Short>();
+            swCount = 0;
+            File file = new File( System.getProperty("user.dir")+"/src/main/java/skipnode/korea-100-router-node-num-ip-list.txt");
+            try (BufferedReader br = new BufferedReader(new FileReader(file))) {
+                String line;
+                while ((line = br.readLine()) != null) {
+                    String[] numIP = line.split(",");
+                    edgeSWList.add(Short.parseShort(numIP[0]));
+                    swIPAddrList.add(numIP[1]);
+                }
+                if (swIPAddrList.size() > 0 && edgeSWList.size() > 0) {
+                    swCount = swIPAddrList.size();
+                    if(logging)System.out.println("Edge node number and IP is loaded. First node: (" + edgeSWList.get(0)+", "+swIPAddrList.get(0)+")");
+                }
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+
 
         EventLoopGroup groupClient = new NioEventLoopGroup();
         bClient = new Bootstrap();
@@ -295,8 +324,8 @@ class DHTManagerHandler extends SimpleChannelInboundHandler<DatagramPacket> {
         //Appends edge switch numbers to the byte array
 
         for (int i = 0; i < DHTManager.swCount; i++) {
-            if (DHTManager.edgeSWList[i] != 0) {
-                byte[] swBytes = ByteBuffer.allocate(2).putShort((short) (DHTManager.edgeSWList[i] - 1)).array();
+            if (DHTManager.edgeSWList.get(i) != 0) {
+                byte[] swBytes = ByteBuffer.allocate(2).putShort((short) (DHTManager.edgeSWList.get(i) - 1)).array();
                 sendBuf[6 + i * 2] = swBytes[0];
                 sendBuf[6 + i * 2 + 1] = swBytes[1];
             }
@@ -436,7 +465,7 @@ class DHTManagerHandler extends SimpleChannelInboundHandler<DatagramPacket> {
             if(DHTManager.logging)System.out.println("opCode 3: store DHT server.");
 
             //byte[] byte_switch_ip = new byte[4];
-            String strSWIP = DHTManager.swIPAddrList[switchIndex];
+            String strSWIP = DHTManager.swIPAddrList.get(switchIndex);
             int nSwitchIP = iptoint(strSWIP) & 0xFFFFFFFF;
             byte[] reverseByteSwitchIP =  ByteBuffer.allocate(4).putInt(nSwitchIP).array();
             byte[] byteSwitchIP = new byte[4];
@@ -471,28 +500,30 @@ class DHTManagerHandler extends SimpleChannelInboundHandler<DatagramPacket> {
                 System.out.println();
             }
 
+            if(DHTManager.logging)System.out.println("Suppose to update the caches.");
+            //210613 update the cache function is disabled.
             // Update the cache of the edges in the edge list.
-            for (int i = 0;i < DHTManager.swCount;i++){
-                if (DHTManager.edgeSWList[i] != 0 && DHTManager.edgeSWList[i] != switchNum){
-
-                    byte[] swByte = ByteBuffer.allocate(2).putShort(DHTManager.edgeSWList[i]).array();
-                    sendBuf[1] = swByte[1];
-                    int swListIndex = DHTManager.edgeSWList[i]-1;
-
-
-                    Channel clientCh = DHTManager.bClient.bind(0).sync().channel();
-                    clientCh.writeAndFlush(
-                            new DatagramPacket(Unpooled.copiedBuffer(sendBuf), new InetSocketAddress(DHTManager.swIPAddrList[swListIndex],DHTManager.ovsPort))).addListener(ChannelFutureListener.CLOSE);
-                }
-            }
-            byte[] swByte = ByteBuffer.allocate(2).putShort(switchNum).array();
-            sendBuf[1] = swByte[1];
-            if(DHTManager.logging)System.out.printf("receiving SW IP="+"127.0.0.1"+",port="+DHTManager.ovsPort+".\n");
-
-            Channel clientCh = DHTManager.bClient.bind(0).sync().channel();
-
-            clientCh.writeAndFlush(
-                    new DatagramPacket(Unpooled.copiedBuffer(sendBuf), new InetSocketAddress("127.0.0.1",DHTManager.ovsPort))).addListener(ChannelFutureListener.CLOSE);
+//            for (int i = 0;i < DHTManager.swCount;i++){
+//                if (DHTManager.edgeSWList.get(i) != 0 && DHTManager.edgeSWList.get(i) != switchNum){
+//
+//                    byte[] swByte = ByteBuffer.allocate(2).putShort(DHTManager.edgeSWList.get(i)).array();
+//                    sendBuf[1] = swByte[1];
+//                    int swListIndex = DHTManager.edgeSWList.get(i)-1;
+//
+//
+//                    Channel clientCh = DHTManager.bClient.bind(0).sync().channel();
+//                    clientCh.writeAndFlush(
+//                            new DatagramPacket(Unpooled.copiedBuffer(sendBuf), new InetSocketAddress(DHTManager.swIPAddrList.get(swListIndex),DHTManager.ovsPort))).addListener(ChannelFutureListener.CLOSE);
+//                }
+//            }
+//            byte[] swByte = ByteBuffer.allocate(2).putShort(switchNum).array();
+//            sendBuf[1] = swByte[1];
+//            if(DHTManager.logging)System.out.printf("receiving SW IP="+"127.0.0.1"+",port="+DHTManager.ovsPort+".\n");
+//
+//            Channel clientCh = DHTManager.bClient.bind(0).sync().channel();
+//
+//            clientCh.writeAndFlush(
+//                    new DatagramPacket(Unpooled.copiedBuffer(sendBuf), new InetSocketAddress("127.0.0.1",DHTManager.ovsPort))).addListener(ChannelFutureListener.CLOSE);
 
 
 //			String opCode = OPCODE_INFORM_CONNECTION;
@@ -557,30 +588,34 @@ class DHTManagerHandler extends SimpleChannelInboundHandler<DatagramPacket> {
                 System.out.println();
             }
 
-            for (int i = 0;i < DHTManager.swCount;i++){
-                if (DHTManager.edgeSWList[i] != 0 && DHTManager.edgeSWList[i] != switchNum){
+            if(DHTManager.logging)System.out.println("Suppose to update the caches.");
+            //210613 update the cache function is disabled.
+            // Update the cache of the edges in the edge list.
+//            for (int i = 0;i < DHTManager.swCount;i++){
+//                if (DHTManager.edgeSWList.get(i) != 0 && DHTManager.edgeSWList.get(i) != switchNum){
+//
+//                    byte[] swByte = ByteBuffer.allocate(2).putShort(DHTManager.edgeSWList.get(i)).array();
+//                    sendBuf[1] = swByte[1];
+//                    int swListIndex = DHTManager.edgeSWList.get(i)-1;
+//                    if(DHTManager.logging)System.out.printf("receiving SW IP="+DHTManager.swIPAddrList.get(swListIndex)+",port="+DHTManager.ovsPort+".\n");
+//
+//
+//                    Channel clientCh = DHTManager.bClient.bind(0).sync().channel();
+//
+//                    clientCh.writeAndFlush(
+//                            new DatagramPacket(Unpooled.copiedBuffer(sendBuf), new InetSocketAddress(DHTManager.swIPAddrList.get(swListIndex),DHTManager.ovsPort))).addListener(ChannelFutureListener.CLOSE);
+//                }
+//            }
+//            byte[] swByte = ByteBuffer.allocate(2).putShort(switchNum).array();
+//            sendBuf[1] = swByte[1];
+//            if(DHTManager.logging)System.out.printf("receiving SW IP="+"127.0.0.1"+",port="+DHTManager.ovsPort+".\n");
+//
+//
+//            Channel clientCh = DHTManager.bClient.bind(0).sync().channel();
+//            clientCh.writeAndFlush(
+//                    new DatagramPacket(Unpooled.copiedBuffer(sendBuf), new InetSocketAddress("127.0.0.1",DHTManager.ovsPort))).addListener(ChannelFutureListener.CLOSE);
 
-                    byte[] swByte = ByteBuffer.allocate(2).putShort(DHTManager.edgeSWList[i]).array();
-                    sendBuf[1] = swByte[1];
-                    int swListIndex = DHTManager.edgeSWList[i]-1;
-                    if(DHTManager.logging)System.out.printf("receiving SW IP="+DHTManager.swIPAddrList[swListIndex]+",port="+DHTManager.ovsPort+".\n");
-
-
-                    Channel clientCh = DHTManager.bClient.bind(0).sync().channel();
-
-                    clientCh.writeAndFlush(
-                            new DatagramPacket(Unpooled.copiedBuffer(sendBuf), new InetSocketAddress(DHTManager.swIPAddrList[swListIndex],DHTManager.ovsPort))).addListener(ChannelFutureListener.CLOSE);
-                }
-            }
-            byte[] swByte = ByteBuffer.allocate(2).putShort(switchNum).array();
-            sendBuf[1] = swByte[1];
-            if(DHTManager.logging)System.out.printf("receiving SW IP="+"127.0.0.1"+",port="+DHTManager.ovsPort+".\n");
-
-
-            Channel clientCh = DHTManager.bClient.bind(0).sync().channel();
-            clientCh.writeAndFlush(
-                    new DatagramPacket(Unpooled.copiedBuffer(sendBuf), new InetSocketAddress("127.0.0.1",DHTManager.ovsPort))).addListener(ChannelFutureListener.CLOSE);
-
+            //old code
 			/*
 			for (int i = 0;i < 4;i++){
                 sendBuf[2 + (3-i)] = byteVisitingTargetHostIP[i];
@@ -592,13 +627,14 @@ class DHTManagerHandler extends SimpleChannelInboundHandler<DatagramPacket> {
 				sendBuf[16+i]=  strDig[i];
 			}
 			for (int i = 0;i < DHTManager.swCount;i++){
-				byte[] swByte = ByteBuffer.allocate(2).putShort(DHTManager.edgeSWList[i]).array();
+				byte[] swByte = ByteBuffer.allocate(2).putShort(DHTManager.edgeSWList.get(i)).array();
 				sendBuf[1] = swByte[1];
-				int swListIndex = DHTManager.edgeSWList[i]-1;
+				int swListIndex = DHTManager.edgeSWList.get(i)-1;
 		        Channel clientCh = DHTManager.bClient.bind(0).sync().channel();
                 clientCh.writeAndFlush(
-    	                        new DatagramPacket(Unpooled.copiedBuffer(sendBuf), new InetSocketAddress(DHTManager.swIPAddrList[swListIndex],DHTManager.ovsPort))).addListener(ChannelFutureListener.CLOSE);
+    	                        new DatagramPacket(Unpooled.copiedBuffer(sendBuf), new InetSocketAddress(DHTManager.swIPAddrList.get(swListIndex),DHTManager.ovsPort))).addListener(ChannelFutureListener.CLOSE);
 			}*/
+            //old code ends
 
             //---------------client example
 //			String opCode = OPCODE_APP_MOBILITY;
@@ -669,29 +705,33 @@ class DHTManagerHandler extends SimpleChannelInboundHandler<DatagramPacket> {
                 System.out.println();
             }
 
-            for (int i = 0;i < DHTManager.swCount;i++){
-                if (DHTManager.edgeSWList[i] != 0 && DHTManager.edgeSWList[i] != switchNum){
+            if(DHTManager.logging)System.out.println("Suppose to update the caches.");
+            //210613 update the cache function is disabled.
+            // Update the cache of the edges in the edge list.
+//            for (int i = 0;i < DHTManager.swCount;i++){
+//                if (DHTManager.edgeSWList.get(i) != 0 && DHTManager.edgeSWList.get(i) != switchNum){
+//
+//                    byte[] swByte = ByteBuffer.allocate(2).putShort(DHTManager.edgeSWList.get(i)).array();
+//                    sendBuf[1] = swByte[1];
+//                    int swListIndex = DHTManager.edgeSWList.get(i)-1;
+//                    if(DHTManager.logging)System.out.printf("receiving SW IP="+DHTManager.swIPAddrList.get(swListIndex)+",port="+DHTManager.ovsPort+".\n");
+//
+//                    Channel clientCh = DHTManager.bClient.bind(0).sync().channel();
+//                    clientCh.writeAndFlush(
+//                            new DatagramPacket(Unpooled.copiedBuffer(sendBuf), new InetSocketAddress(DHTManager.swIPAddrList.get(swListIndex),DHTManager.ovsPort))).addListener(ChannelFutureListener.CLOSE);
+//                }
+//            }
+//            byte[] swByte = ByteBuffer.allocate(2).putShort(switchNum).array();
+//            sendBuf[1] = swByte[1];
+//            if(DHTManager.logging)System.out.printf("receiving SW IP="+"127.0.0.1"+",port="+DHTManager.ovsPort+".\n");
+//
+//
+//            Channel clientCh = DHTManager.bClient.bind(0).sync().channel();
+//            clientCh.writeAndFlush(
+//                    new DatagramPacket(Unpooled.copiedBuffer(sendBuf), new InetSocketAddress("127.0.0.1",DHTManager.ovsPort))).addListener(ChannelFutureListener.CLOSE);
 
-                    byte[] swByte = ByteBuffer.allocate(2).putShort(DHTManager.edgeSWList[i]).array();
-                    sendBuf[1] = swByte[1];
-                    int swListIndex = DHTManager.edgeSWList[i]-1;
-                    if(DHTManager.logging)System.out.printf("receiving SW IP="+DHTManager.swIPAddrList[swListIndex]+",port="+DHTManager.ovsPort+".\n");
 
-                    Channel clientCh = DHTManager.bClient.bind(0).sync().channel();
-                    clientCh.writeAndFlush(
-                            new DatagramPacket(Unpooled.copiedBuffer(sendBuf), new InetSocketAddress(DHTManager.swIPAddrList[swListIndex],DHTManager.ovsPort))).addListener(ChannelFutureListener.CLOSE);
-                }
-            }
-            byte[] swByte = ByteBuffer.allocate(2).putShort(switchNum).array();
-            sendBuf[1] = swByte[1];
-            if(DHTManager.logging)System.out.printf("receiving SW IP="+"127.0.0.1"+",port="+DHTManager.ovsPort+".\n");
-
-
-            Channel clientCh = DHTManager.bClient.bind(0).sync().channel();
-            clientCh.writeAndFlush(
-                    new DatagramPacket(Unpooled.copiedBuffer(sendBuf), new InetSocketAddress("127.0.0.1",DHTManager.ovsPort))).addListener(ChannelFutureListener.CLOSE);
-
-
+            //old code
 			/*
 			for (int i = 0;i < 4;i++){
                 sendBuf[2 + (3-i)] = byteVisitingCTIP[i];
@@ -703,13 +743,14 @@ class DHTManagerHandler extends SimpleChannelInboundHandler<DatagramPacket> {
 				sendBuf[16+i]=  strDig[i];
 			}
 			for (int i = 0;i < DHTManager.swCount;i++){
-				byte[] swByte = ByteBuffer.allocate(2).putShort(DHTManager.edgeSWList[i]).array();
+				byte[] swByte = ByteBuffer.allocate(2).putShort(DHTManager.edgeSWList.get(i)).array();
 				sendBuf[1] = swByte[1];
-				int swListIndex = DHTManager.edgeSWList[i]-1;
+				int swListIndex = DHTManager.edgeSWList.get(i)-1;
 		        Channel clientCh = DHTManager.bClient.bind(0).sync().channel();
                 clientCh.writeAndFlush(
-    	                        new DatagramPacket(Unpooled.copiedBuffer(sendBuf), new InetSocketAddress(DHTManager.swIPAddrList[swListIndex],DHTManager.ovsPort))).addListener(ChannelFutureListener.CLOSE);
+    	                        new DatagramPacket(Unpooled.copiedBuffer(sendBuf), new InetSocketAddress(DHTManager.swIPAddrList.get(swListIndex),DHTManager.ovsPort))).addListener(ChannelFutureListener.CLOSE);
 			}*/
+            //old code ends
 
             //---------------client example
 //			String opCode = OPCODE_CTN_MOBILITY;
@@ -733,7 +774,12 @@ class DHTManagerHandler extends SimpleChannelInboundHandler<DatagramPacket> {
 
             if(DHTManager.logging)System.out.printf("[Node %d] Getting the pair: (Host IP:Port Number=%s%s)\n", DHTManager.nodeIndex, strIP, strPortNumber);
 
-            DHTManager.skipGraphServer.get(OPCODE_GET_HASH, strIP+strPortNumber, switchNum, byteHostIP, strDig);
+            if (strPortNumber.equals(":0")) {
+                DHTManager.skipGraphServer.get(OPCODE_GET_HASH, strIP, switchNum, byteHostIP, strDig);
+            }
+            else {
+                DHTManager.skipGraphServer.get(OPCODE_GET_HASH, strIP+strPortNumber, switchNum, byteHostIP, strDig);
+            }
 
 
             //---------------client example
@@ -743,18 +789,20 @@ class DHTManagerHandler extends SimpleChannelInboundHandler<DatagramPacket> {
 //			String portNumber = "0050";
 //			String strInput = opCode+swNum+homeTargetHostIP+portNumber;
 
-        } /*else if (opCode == OPCODE_TOGGLE_LOGGING){
+        }
+        //old code
+        /*else if (opCode == OPCODE_TOGGLE_LOGGING){
         	if(DHTManager.logging)System.out.println("opCode 101: Toggle ovs logging");
         	byte[] sendBuf = new byte[2];
             sendBuf[0] = OPCODE_TOGGLE_LOGGING;
             for (int i = 0;i < DHTManager.swCount;i++){
-				if (DHTManager.edgeSWList[i] != 0 && DHTManager.edgeSWList[i] != switchNum){
-                    byte[] swByte = ByteBuffer.allocate(2).putShort(DHTManager.edgeSWList[i]).array();
+				if (DHTManager.edgeSWList.get(i) != 0 && DHTManager.edgeSWList.get(i) != switchNum){
+                    byte[] swByte = ByteBuffer.allocate(2).putShort(DHTManager.edgeSWList.get(i)).array();
 				    sendBuf[1] = swByte[1];
-				    int swListIndex = DHTManager.edgeSWList[i]-1;
+				    int swListIndex = DHTManager.edgeSWList.get(i)-1;
 			        Channel clientCh = DHTManager.bClient.bind(0).sync().channel();
 				    clientCh.writeAndFlush(
-    	                        new DatagramPacket(Unpooled.copiedBuffer(sendBuf), new InetSocketAddress(DHTManager.swIPAddrList[swListIndex],DHTManager.ovsPort))).addListener(ChannelFutureListener.CLOSE);
+    	                        new DatagramPacket(Unpooled.copiedBuffer(sendBuf), new InetSocketAddress(DHTManager.swIPAddrList.get(swListIndex),DHTManager.ovsPort))).addListener(ChannelFutureListener.CLOSE);
                 }
 			}
 			byte[] swByte = ByteBuffer.allocate(2).putShort(switchNum).array();
@@ -767,6 +815,7 @@ class DHTManagerHandler extends SimpleChannelInboundHandler<DatagramPacket> {
 //			String opCode = "OPCODE_TOGGLE_LOGGING";
 //			String swNum = "01";
         }*/
+        //old code ends
     }
 
     @Override
@@ -915,7 +964,7 @@ class DHTServer {
         createIPAddressAwareNode(ip, portNumber, kvMap);
         if (localityID != null) {
             this.localityID = localityID;
-            //Insert this node into DHT network.
+            //Insert this node into DHT network by being introduced by IP address approach node.
             createLocalityAwareNode(ip, portNumber, ip, portNumber, localityID, kvMap);
         }
     }
@@ -955,15 +1004,16 @@ class DHTServer {
 
             String strIP = input.split(":")[0];
             String firstSHA = sha256(strIP);
+            System.out.println("Key: " + firstSHA);
             boolean isLocalityIdSame = false;
             if (localityID != null && localityAwareNode != null) {
                 //Search entry with MOID on Edge's locality site
                 String valueLA = localityAwareNode.getResourceByNameID(localityID, firstSHA);
-                if (valueLA != null) { //Hit
+                if (valueLA != null && !valueLA.equals("")) { //Hit
                     //TODO
                     //Revise entry's locator from prior Edge to recent Edge
                     //Jaehyun implements sending UDP packet to OVS
-                    if(DHTManager.logging)System.out.println("OpCode = "+OPCODE_GET_HASH+", " + valueLA);
+                    if(DHTManager.logging)System.out.println("OpCode = OPCODE_GET_HASH, " + valueLA);
                     String foundData = valueLA;
 
                     JsonParser parser = new JsonParser();
@@ -1047,7 +1097,7 @@ class DHTServer {
                     Integer item = Integer.parseInt(ipSplit[2]);
                     nameId = "1" + String.format("%8s", Integer.toBinaryString(item)).replaceAll(" ", "0").substring(1);
                     String valueIA = ipAddressAwareNode.getResourceByNameID(nameId, firstSHA);
-                    if (valueIA != null) { //Hit
+                    if (valueIA != null && !valueIA.equals("")) { //Hit
                         //Revise entry's locator from prior Edge to recent Edge
                         //GOTO (2)
 
@@ -1055,11 +1105,13 @@ class DHTServer {
                     else { // Fail
                         // Search entry with MOID on DHT network
                         String valueHash = ipAddressAwareNode.getResource(firstSHA);
-                        if (valueHash != null) { //Hit
+                        if (valueHash != null && !valueHash.equals("")) { //Hit
                             //GOTO (3)
                         }
                         else { // Fail
                             // Write new entry, home site is recent Edge
+
+                            //TODO
                             /*
                             if(DHTManager.logging)System.out.println("Get Failed.");
 
@@ -1126,7 +1178,7 @@ class DHTServer {
             if (localityID != null && localityAwareNode != null) {
                 //Search entry with MOID on Edge's locality site
                 String valueLA = localityAwareNode.getResourceByNameID(localityID, firstSHA);
-                if (valueLA != null) { //Hit
+                if (valueLA != null && !valueLA.equals("")) { //Hit
                     //TODO
                     //Revise entry's locator from prior Edge to recent Edge
 
@@ -1210,10 +1262,11 @@ class DHTServer {
                     //Search entry with network address of IP address on IP address approach
                     // Search entry with MOID on DHT network
                     String valueHash = ipAddressAwareNode.getResource(firstSHA);
-                    if (valueHash != null) { //Hit
+                    if (valueHash != null && !valueHash.equals("")) { //Hit
                         //GOTO (3)
                     } else { // Fail
                         // Write new entry, home site is recent Edge
+                        //TODO
                         /*
                         if(DHTManager.logging)System.out.println("Get Failed.");
 
@@ -1305,7 +1358,7 @@ class DHTServer {
             if (localityID != null && localityAwareNode != null) {
                 //Search entry with MOID on Edge's locality site
                 String valueLA = localityAwareNode.getResourceByNameID(localityID, firstSHA);
-                if (valueLA != null) { //Hit
+                if (valueLA != null && !valueLA.equals("")) { //Hit
                     //TODO
                     //Revise entry's locator from prior Edge to recent Edge
                     //Jaehyun implements sending UDP packet to OVS
@@ -1416,7 +1469,7 @@ class DHTServer {
                     Integer item = Integer.parseInt(ipSplit[2]);
                     nameId = "1" + String.format("%8s", Integer.toBinaryString(item)).replaceAll(" ", "0").substring(1);
                     String valueIA = ipAddressAwareNode.getResourceByNameID(nameId, firstSHA);
-                    if (valueIA != null) { //Hit
+                    if (valueIA != null && !valueIA.equals("")) { //Hit
                         //Revise entry's locator from prior Edge to recent Edge
                         //GOTO (2)
 
@@ -1427,6 +1480,7 @@ class DHTServer {
                             //GOTO (3)
                         } else { // Fail
                             // Write new entry, home site is recent Edge
+                            //TODO
                             /*
                             if(DHTManager.logging)System.out.println("Get Failed.");
 
@@ -1525,6 +1579,7 @@ class DHTServer {
                 // Return entry to OvS kernal module
 
                 //NOT TODO
+                //old code
 //                else {
 //
 //						byte[] sendData = new byte[42];//Jaehee modified 160720
@@ -1545,6 +1600,7 @@ class DHTServer {
 //
 //						if(DHTManager.logging)System.out.println("Get Failed");
 //					}
+                //old code ends
             }
         }
     }

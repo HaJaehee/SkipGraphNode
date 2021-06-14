@@ -51,11 +51,14 @@ package skipnode;
  Rev. history : 2021-06-14
  Version : 1.1.6
  Removed useless static variables.
+ Simple 80 virtual node test is passed.
  Modifier : Jaehee ha (jaehee.ha@kaist.ac.kr)
 
  TODO
  store(put), get(search),
  More sophisticated implementation of get()
+ More sophisticated implementation of store()
+    - Where is the data being stored?
  AR_LIST is actually needed?
  왜 DHT search가 안되지?
  */

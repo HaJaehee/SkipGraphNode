@@ -484,7 +484,7 @@ public class SkipNode implements SkipNodeInterface {
      */
     public SkipNodeIdentity handleResourceByNumID(BigInteger numID, boolean isGettingResource, boolean isSettingResource, String resourceValue) {
         // If this is the node the search request is looking for, return its identity
-        logger.debug("in "+ this.numID.toString(16)+" handler, key: " + numID.toString(16));
+        logger.debug("Handle resource by num ID: in "+ this.numID.toString(16)+" handler, key: " + numID.toString(16)+", value: "+resourceValue);
         if (numID.equals(this.numID)) {
             return getIdentity(handleKeyValueMapStorageWithNumID(numID, isGettingResource, isSettingResource, resourceValue));
         }
@@ -549,6 +549,7 @@ public class SkipNode implements SkipNodeInterface {
             setJedisPool();
             Jedis jedis = jedisPool.getResource();
             returnResourceQueryResult = jedis.get(numID.toString(16));
+            logger.debug("Resource query result = "+returnResourceQueryResult);
             jedis.close();
         }
         else if (isSettingResource && resourceValue != null && isUsingRedis) {
@@ -566,6 +567,7 @@ public class SkipNode implements SkipNodeInterface {
         }
         else if (isGettingResource && !isUsingRedis && kvMap != null) {
             returnResourceQueryResult = kvMap.get(numID.toString(16));
+            logger.debug("Resource query result = "+returnResourceQueryResult);
         }
         else if (isSettingResource && !isUsingRedis && kvMap != null) {
             for (SkipNodeIdentity i : lookupTable.getNodeListAtHighestLevel()) {
@@ -746,6 +748,7 @@ public class SkipNode implements SkipNodeInterface {
      */
     @Override
     public SearchResult handleResourceByNameIDRecursive(String targetNameID, int level, boolean isGettingResource, boolean isSettingResource, String resourceKey, String resourceValue) {
+        logger.debug("Handling resource by name ID: in "+this.numID+" handler, target name ID: "+ targetNameID + ", key: " + resourceKey + ", value: "+resourceValue);
         if(nameID.equals(targetNameID)) {
             return new SearchResult(getIdentity(handleJedisWithNameID(isGettingResource, isSettingResource, resourceKey, resourceValue)));
         }
@@ -801,6 +804,7 @@ public class SkipNode implements SkipNodeInterface {
             setJedisPool();
             Jedis jedis = jedisPool.getResource();
             returnResourceQueryResult = jedis.get(resourceKey);
+            logger.debug("Resource query result = "+returnResourceQueryResult);
             jedis.close();
         }
         else if (isSettingResource && resourceKey != null && resourceValue != null && isUsingRedis) {
@@ -818,6 +822,7 @@ public class SkipNode implements SkipNodeInterface {
         }
         else if (isGettingResource && !isUsingRedis && kvMap != null) {
             returnResourceQueryResult = kvMap.get(resourceKey);
+            logger.debug("Resource query result = "+returnResourceQueryResult);
         }
         else if (isSettingResource && resourceKey != null && resourceValue != null && !isUsingRedis && kvMap != null) {
             for (SkipNodeIdentity i : lookupTable.getNodeListAtHighestLevel()) {

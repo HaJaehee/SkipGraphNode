@@ -144,7 +144,7 @@ public final class DHTManager {
             }
         }
 
-        ip = "192.168.0.4";
+        ip = "172.30.1.52";
 
 
         kvMap = new HashMap<String, String>();
@@ -875,7 +875,7 @@ class ClientHandler extends SimpleChannelInboundHandler<DatagramPacket> {
 }
 
 class DHTServer {
-    private static int LEVEL = 5;
+    private static int LEVEL = 16;
 
     private final SkipNode ipAddressAwareNode;
     private final SkipNode localityAwareNode;
@@ -1089,7 +1089,12 @@ class DHTServer {
             String searchResult = null;
             if (localityID != null && localityAwareNode != null) {
                 //Search entry with MOID on Edge's locality site
-                if(logging)System.out.println("Locality-aware approach searching");
+                if(logging){
+                    System.out.println("Locality-aware approach searching");
+                    System.out.println("Locality ID: "+localityID);
+                    System.out.println("Key: "+firstSHA);
+                }
+
                 String valueLA = localityAwareNode.getResourceByNameID(localityID, firstSHA);
                 if (valueLA != null && !valueLA.equals("")) { //Hit
                     isHit = true;
@@ -1103,7 +1108,11 @@ class DHTServer {
                 //ONLY USE THIRD IP FIELD 8 bits FOR Prefix
                 Integer item = Integer.parseInt(ipSplit[2]);
                 nameId = "1" + String.format("%8s", Integer.toBinaryString(item)).replaceAll(" ", "0").substring(1);
-                if(logging)System.out.println("IP address-aware approach searching");
+                if(logging) {
+                    System.out.println("IP address-aware approach searching");
+                    System.out.println("IP based name ID: "+nameId);
+                    System.out.println("Key: "+firstSHA);
+                }
                 String valueIA = ipAddressAwareNode.getResourceByNameID(nameId, firstSHA);
                 if (valueIA != null && !valueIA.equals("")) { //Hit
                     //Revise entry's locator from prior Edge to recent Edge
@@ -1113,8 +1122,11 @@ class DHTServer {
                 }
             }
             if (!isHit) { //IP address-approach searching failed
-                if(logging)System.out.println("Hash approach searching");
-                String valueHash = ipAddressAwareNode.getResource(firstSHA);
+                if(logging) {
+                    System.out.println("Hash approach searching");
+                    System.out.println("Key: "+firstSHA);
+                }
+                String valueHash = ipAddressAwareNode.getResourceByResourceKey(firstSHA);
                 if (valueHash != null && !valueHash.equals("")) { //Hit
                     isHit = true;
                     searchResult = valueHash;
@@ -1126,7 +1138,6 @@ class DHTServer {
                     //Jaehyun implements sending UDP packet to OVS
                     if (logging) System.out.println("OpCode = OPCODE_GET_HASH, " + searchResult);
                     String foundData = searchResult;
-
                     JsonParser parser = new JsonParser();
                     JsonObject jobj = new JsonObject();
                     jobj = (JsonObject) parser.parse(foundData);
@@ -1260,7 +1271,11 @@ class DHTServer {
             String searchResult = null;
             if (localityID != null && localityAwareNode != null) {
                 //Search entry with MOID on Edge's locality site
-                if(logging)System.out.println("Locality-aware approach searching");
+                if(logging){
+                    System.out.println("Locality-aware approach searching");
+                    System.out.println("Locality ID: "+localityID);
+                    System.out.println("Key: "+firstSHA);
+                }
                 String valueLA = localityAwareNode.getResourceByNameID(localityID, firstSHA);
                 if (valueLA != null && !valueLA.equals("")) { //Hit
                     isHit = true;
@@ -1269,7 +1284,10 @@ class DHTServer {
             }
             if (!isHit) { //Locality-aware approach searching failed
                 //Search entry with hashed IP address, MOID
-                if(logging)System.out.println("Hash approach searching");
+                if(logging) {
+                    System.out.println("Hash approach searching");
+                    System.out.println("Key: "+firstSHA);
+                }
                 String valueHash = ipAddressAwareNode.getResource(firstSHA);
                 if (valueHash != null && !valueHash.equals("")) { //Hit
                     isHit = true;
@@ -1442,7 +1460,11 @@ class DHTServer {
             String searchResult = null;
             if (localityID != null && localityAwareNode != null) {
                 //Search entry with MOID on Edge's locality site
-                if(logging)System.out.println("Locality-aware approach searching");
+                if(logging){
+                    System.out.println("Locality-aware approach searching");
+                    System.out.println("Locality ID: "+localityID);
+                    System.out.println("Key: "+firstSHA);
+                }
                 String valueLA = localityAwareNode.getResourceByNameID(localityID, firstSHA);
                 if (valueLA != null && !valueLA.equals("")) { //Hit
                     isHit = true;
@@ -1456,7 +1478,11 @@ class DHTServer {
                 //ONLY USE THIRD IP FIELD 8 bits FOR Prefix
                 Integer item = Integer.parseInt(ipSplit[2]);
                 nameId = "1" + String.format("%8s", Integer.toBinaryString(item)).replaceAll(" ", "0").substring(1);
-                if(logging)System.out.println("IP address-aware approach searching");
+                if(logging) {
+                    System.out.println("IP address-aware approach searching");
+                    System.out.println("IP based name ID: "+nameId);
+                    System.out.println("Key: "+firstSHA);
+                }
                 String valueIA = ipAddressAwareNode.getResourceByNameID(nameId, firstSHA);
                 if (valueIA != null && !valueIA.equals("")) { //Hit
                     //Revise entry's locator from prior Edge to recent Edge
@@ -1466,7 +1492,10 @@ class DHTServer {
                 }
             }
             if (!isHit) { //IP address-approach searching failed
-                if(logging)System.out.println("Hash approach searching");
+                if(logging) {
+                    System.out.println("Hash approach searching");
+                    System.out.println("Key: "+firstSHA);
+                }
                 String valueHash = ipAddressAwareNode.getResource(firstSHA);
                 if (valueHash != null && !valueHash.equals("")) { //Hit
                     isHit = true;

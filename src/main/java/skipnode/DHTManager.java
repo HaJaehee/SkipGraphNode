@@ -60,7 +60,9 @@ package skipnode;
  More sophisticated implementation of store()
     - Where is the data being stored?
  AR_LIST is actually needed?
- 왜 DHT search가 안되지?
+ OPCODE_INFORM_CONNECTION에서 자기의 locality에 저장하는 건 okay.
+ OPCODE_GET_HASH, OPCODE_GET_IP, OPCODE_GET_IPPORT 이 때도 query를 수행한 locality에 복제해야 하는데
+ 이 부분을 구현해야겠구만.
  */
 /* -------------------------------------------------------- */
 
@@ -1763,10 +1765,10 @@ class DHTServer {
 
         //TODO
         if(logging)System.out.println("key: "+firstSHA+", data: "+jsonString.toString());
-        if(localityAwareNode != null) {
-            localityAwareNode.storeResource(firstSHA, jsonString.toString());
+        if(localityAwareNode != null && localityID != null) {
+            localityAwareNode.storeResourceByNameID(localityID, firstSHA, jsonString.toString());
         }
-        ipAddressAwareNode.storeResource(firstSHA, jsonString.toString());
+        ipAddressAwareNode.storeResourceByResourceKey(firstSHA, jsonString.toString());
 
         //peer.put(Number160.createHash(firstSHA)).setData(new Data(jsonString.toString())).start();
     }
@@ -1800,10 +1802,10 @@ class DHTServer {
 
         //TODO
        if(logging)System.out.println("key: "+firstSHA+", data: "+jsonString.toString());
-        if(localityAwareNode != null) {
-            localityAwareNode.storeResource(firstSHA, jsonString.toString());
+        if(localityAwareNode != null && localityID != null) {
+            localityAwareNode.storeResourceByNameID(localityID, firstSHA, jsonString.toString());
         }
-        ipAddressAwareNode.storeResource(firstSHA, jsonString.toString());
+        ipAddressAwareNode.storeResourceByResourceKey(firstSHA, jsonString.toString());
 //        peer.put(Number160.createHash(firstSHA)).setData(new Data(jsonString.toString())).start();
 
 
@@ -1864,10 +1866,10 @@ class DHTServer {
 
         //TODO
         if(logging)System.out.println("key: "+firstSHA+", data: "+jsonString.toString());
-        if(localityAwareNode != null) {
-            localityAwareNode.storeResource(firstSHA, jsonString.toString());
+        if(localityAwareNode != null && localityID != null) {
+            localityAwareNode.storeResourceByNameID(localityID, firstSHA, jsonString.toString());
         }
-        ipAddressAwareNode.storeResource(firstSHA, jsonString.toString());
+        ipAddressAwareNode.storeResourceByResourceKey(firstSHA, jsonString.toString());
 //        peer.put(Number160.createHash(firstSHA)).setData(new Data(jsonString.toString())).start();
 
 

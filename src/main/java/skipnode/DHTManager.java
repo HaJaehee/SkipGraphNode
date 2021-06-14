@@ -57,6 +57,7 @@ package skipnode;
  store(put), get(search),
  More sophisticated implementation of get()
  AR_LIST is actually needed?
+ 왜 DHT search가 안되지?
  */
 /* -------------------------------------------------------- */
 
@@ -1074,7 +1075,7 @@ class DHTServer {
 
         //MUST TODO
 
-        if(opCode == OPCODE_GET_HASH){
+        if (opCode == OPCODE_GET_HASH) {
             //In this case, input is a string of hostIP:port
             byte lswitchNum = switchNum;
             byte[] lbyteHostIP = byteHostIP.clone();
@@ -1084,416 +1085,73 @@ class DHTServer {
             String firstSHA = sha256(strIP);
             System.out.println("Key: " + firstSHA);
             boolean isLocalityIdSame = false;
+            boolean isHit = false;
+            String searchResult = null;
             if (localityID != null && localityAwareNode != null) {
                 //Search entry with MOID on Edge's locality site
+                if(logging)System.out.println("Locality-aware approach searching");
                 String valueLA = localityAwareNode.getResourceByNameID(localityID, firstSHA);
                 if (valueLA != null && !valueLA.equals("")) { //Hit
-                    //TODO
+                    isHit = true;
+                    searchResult = valueLA;
+                }
+            }
+            if (!isHit) { //Locality-aware approach searching failed
+                //Search entry with network address of IP address on IP address approach
+                String[] ipSplit = input.split("\\.");
+                String nameId = "";
+                //ONLY USE THIRD IP FIELD 8 bits FOR Prefix
+                Integer item = Integer.parseInt(ipSplit[2]);
+                nameId = "1" + String.format("%8s", Integer.toBinaryString(item)).replaceAll(" ", "0").substring(1);
+                if(logging)System.out.println("IP address-aware approach searching");
+                String valueIA = ipAddressAwareNode.getResourceByNameID(nameId, firstSHA);
+                if (valueIA != null && !valueIA.equals("")) { //Hit
                     //Revise entry's locator from prior Edge to recent Edge
+                    //GOTO (2)
+                    isHit = true;
+                    searchResult = valueIA;
+                }
+            }
+            if (!isHit) { //IP address-approach searching failed
+                if(logging)System.out.println("Hash approach searching");
+                String valueHash = ipAddressAwareNode.getResource(firstSHA);
+                if (valueHash != null && !valueHash.equals("")) { //Hit
+                    isHit = true;
+                    searchResult = valueHash;
+                }
+            }
+            if (isHit) {
+                if (searchResult != null) { //Hit
+                    //TODO
                     //Jaehyun implements sending UDP packet to OVS
-                    if(logging)System.out.println("OpCode = OPCODE_GET_HASH, " + valueLA);
-                    String foundData = valueLA;
+                    if (logging) System.out.println("OpCode = OPCODE_GET_HASH, " + searchResult);
+                    String foundData = searchResult;
 
                     JsonParser parser = new JsonParser();
                     JsonObject jobj = new JsonObject();
                     jobj = (JsonObject) parser.parse(foundData);
 
-                    String recvData = jobj.get(VISITING_IP+"").getAsString() + jobj.get(ES_IP+"").getAsString();
+                    String recvData = jobj.get(VISITING_IP + "").getAsString() + jobj.get(ES_IP + "").getAsString();
 
                     byte[] sendData = new byte[43];//Jaehee modified 160720
 
                     sendData[0] = OPCODE_QUERIED_HASH;
                     sendData[1] = lswitchNum;
-                    for (int i = 0; i < 4;i++){
-                        sendData[2+(3-i)] = (byte) ((Character.digit(recvData.charAt(i*2), 16) << 4) + Character.digit(recvData.charAt(i*2+1), 16));
-                        sendData[6+LM_HDR_LENGTH+(3-i)] = (byte) ((Character.digit(recvData.charAt((i+4)*2), 16) << 4) + Character.digit(recvData.charAt((i+4)*2+1), 16));
-                    }//Jaehee modified 160720
-                    for (int i = 0; i < LM_HDR_LENGTH;i++){//Jaehee modified 160720
-                        sendData[6+i]=  lhashedIP[i];
-                    }
-                    sendData[42]='\0';
-
-
-                    Channel clientCh = null;
-                    try {
-                        clientCh = bClient.bind(0).sync().channel();
-                        clientCh.writeAndFlush(
-                                new DatagramPacket(Unpooled.copiedBuffer(sendData), new InetSocketAddress("localhost",ovsPort))).addListener(ChannelFutureListener.CLOSE);
-
-                    } catch (InterruptedException e) {
-                        e.printStackTrace();
-                    }
-
-                    if(logging) {
-                        System.out.println("send oid:");
-                        for (int i = 0 ; i < LM_HDR_LENGTH ; i++) {
-                            System.out.printf("%02x",sendData[6+i]);
-                        }
-                        System.out.println();
-                    }
-                    if(logFileOut)
-                    {
-                        Date enddate = new Date();
-                        long endtime = enddate.getTime();
-                        long diff = endtime-starttime;
-
-                        String fileName = "/DHTGetDelay.log";
-                        fileName = System.getProperty("user.dir")+fileName.trim();
-                        File file = new File (fileName);
-
-                        FileWriter fw = null;
-                        BufferedWriter bw = null;
-                        PrintWriter out = null;
-                        try{
-                            fw = new FileWriter(file, true);
-                            bw = new BufferedWriter(fw);
-                            out = new PrintWriter(bw);
-
-                            out.println(diff);
-
-                        } catch (IOException e) {
-                            //exception handling left as an exercise for the reader
-                        } finally {
-                            if (out != null) {
-                                out.close();
-                            }
-                            if (bw != null) {
-                                bw.close();
-                            }
-                            if (fw != null) {
-                                fw.close();
-                            }
-                        }
-                    }
-                    //GOTO (2)
-                }
-                else { // Fail
-                    //Search entry with network address of IP address on IP address approach
-                    String[] ipSplit = input.split("\\.");
-                    String nameId = "";
-                    //ONLY USE THIRD IP FIELD 8 bits FOR Prefix
-                    Integer item = Integer.parseInt(ipSplit[2]);
-                    nameId = "1" + String.format("%8s", Integer.toBinaryString(item)).replaceAll(" ", "0").substring(1);
-                    String valueIA = ipAddressAwareNode.getResourceByNameID(nameId, firstSHA);
-                    if (valueIA != null && !valueIA.equals("")) { //Hit
-                        //Revise entry's locator from prior Edge to recent Edge
-                        //GOTO (2)
-
-                    }
-                    else { // Fail
-                        // Search entry with MOID on DHT network
-                        String valueHash = ipAddressAwareNode.getResource(firstSHA);
-                        if (valueHash != null && !valueHash.equals("")) { //Hit
-                            //GOTO (3)
-                        }
-                        else { // Fail
-                            // Write new entry, home site is recent Edge
-
-                            //TODO
-                            /*
-                            if(logging)System.out.println("Get Failed.");
-
-                            firstSHA = sha256(input).getBytes();
-                            DHTManager.skipGraphServer.get(OPCODE_GET_IPPORT, input, switchNum, lbyteHostIP, firstSHA);
-
-                            if(DHTManager.logFileOut) {
-
-                                Date enddate = new Date();
-                                long endtime = enddate.getTime();
-                                long diff = endtime-starttime;
-
-                                String fileName = "/DHTGetDelay.log";
-                                fileName = System.getProperty("user.dir")+fileName.trim();
-                                File file = new File (fileName);
-
-                                FileWriter fw = null;
-                                BufferedWriter bw = null;
-                                PrintWriter out = null;
-                                try{
-                                    fw = new FileWriter(file, true);
-                                    bw = new BufferedWriter(fw);
-                                    out = new PrintWriter(bw);
-
-                                    out.println(diff);
-
-                                } catch (IOException e) {
-                                    //exception handling left as an exercise for the reader
-                                } finally {
-                                    if (out != null) {
-                                        out.close();
-                                    }
-                                    if (bw != null) {
-                                        bw.close();
-                                    }
-                                    if (fw != null) {
-                                        fw.close();
-                                    }
-                                }
-                            }
-                            */
-
-                            //GOTO (4)
-                        }
-                    }
-                }
-                if (isLocalityIdSame) { //(2) is entry's locality ID same to this locality ID?
-                    //(4) Update entry on this locality site and replicate it
-                }
-                else { // !isLocalityIdSame
-                    //(3) Keep prior locality ID and revise entry's locality ID
-                    //Update entry on this locality site
-                    //Update entry on prior locality site
-                }
-                // Return entry to OvS kernal module
-
-            }
-
-        }
-        else if(opCode == OPCODE_GET_IP){
-            //In this case, input is an objectKey
-            String firstSHA = input;
-            boolean isLocalityIdSame = false;
-            if (localityID != null && localityAwareNode != null) {
-                //Search entry with MOID on Edge's locality site
-                String valueLA = localityAwareNode.getResourceByNameID(localityID, firstSHA);
-                if (valueLA != null && !valueLA.equals("")) { //Hit
-                    //TODO
-                    //Revise entry's locator from prior Edge to recent Edge
-
-
-                    //Jaehyun needs to implement sending UDP packet to OVS
-                    if(logging)System.out.println("OpCode = "+OPCODE_GET_IP+", " + valueLA);
-                    String foundData = valueLA;
-
-                    JsonObject jobj = new JsonObject();
-                    jobj = (JsonObject) new JsonParser().parse(foundData);
-
-                    String recvData = jobj.get(VISITING_IP+"").getAsString() + jobj.get(ES_IP+"").getAsString();
-
-                    byte[] sendData = new byte[43];//Jaehee modified 160720
-
-                    sendData[0] = OPCODE_QUERIED_IP;
-                    sendData[1] = switchNum;
-                    for (int i = 0; i < 4;i++){
-                        sendData[2+(3-i)] = (byte) ((Character.digit(recvData.charAt(i*2), 16) << 4) + Character.digit(recvData.charAt(i*2+1), 16));
-                        sendData[6+LM_HDR_LENGTH+(3-i)] = (byte) ((Character.digit(recvData.charAt((i+4)*2), 16) << 4) + Character.digit(recvData.charAt((i+4)*2+1), 16));
-
-                    }//Jaehee modified 160720
-                    for (int i = 0; i < LM_HDR_LENGTH;i++){//Jaehee modified 160720
-                        sendData[6+i]=  hashedIP[i];
-                    }
-
-                    sendData[42]= '\0';
-
-                    Channel clientCh = null;
-                    try {
-                        clientCh = bClient.bind(0).sync().channel();
-                        clientCh.writeAndFlush(
-                                new DatagramPacket(Unpooled.copiedBuffer(sendData), new InetSocketAddress("localhost",ovsPort))).addListener(ChannelFutureListener.CLOSE);
-
-                    } catch (InterruptedException e) {
-                        e.printStackTrace();
-                    }
-
-                    if(logging) {
-                        System.out.println("send oid:");
-                        for (int i = 0 ; i < LM_HDR_LENGTH ; i++) {
-                            System.out.printf("%02x",sendData[6+i]);
-                        }
-                        System.out.println();
-                    }
-                    if (logFileOut) {
-                        Date enddate = new Date();
-                        long endtime = enddate.getTime();
-                        long diff = endtime-starttime;
-
-                        String fileName = "/DHTGetDelay.log";
-                        fileName = System.getProperty("user.dir")+fileName.trim();
-                        File file = new File (fileName);
-
-                        FileWriter fw = null;
-                        BufferedWriter bw = null;
-                        PrintWriter out = null;
-                        try{
-                            fw = new FileWriter(file, true);
-                            bw = new BufferedWriter(fw);
-                            out = new PrintWriter(bw);
-
-                            out.println(diff);
-
-                        } catch (IOException e) {
-                            //exception handling left as an exercise for the reader
-                        } finally {
-                            if (out != null) {
-                                out.close();
-                            }
-                            if (bw != null) {
-                                bw.close();
-                            }
-                            if (fw != null) {
-                                fw.close();
-                            }
-                        }
-                    }
-                    //GOTO (2)
-                } else { // Fail
-                    //Search entry with network address of IP address on IP address approach
-                    // Search entry with MOID on DHT network
-                    String valueHash = ipAddressAwareNode.getResource(firstSHA);
-                    if (valueHash != null && !valueHash.equals("")) { //Hit
-                        //GOTO (3)
-                    } else { // Fail
-                        // Write new entry, home site is recent Edge
-                        //TODO
-                        /*
-                        if(logging)System.out.println("Get Failed.");
-
-                        byte[] sendData = new byte[43];//Jaehee modified 160720
-
-                        sendData[0] = OPCODE_QUERIED_IP;
-                        sendData[1] = switchNum;
-                        for (int i = 0; i < 4;i++){
-                            sendData[2+(3-i)] = byteHostIP[i];
-                            sendData[6+LM_HDR_LENGTH+i] = 0x00;
-                        }//Jaehee modified 160720
-                        for (int i = 0; i < LM_HDR_LENGTH;i++){ //Jaehee modified 160720
-                            sendData[6+i]=  hashedIP[i];
-                        }
-
-                        sendData[42]='\0';
-
-
-                        Channel clientCh = DHTManager.bClient.bind(0).sync().channel();
-                        clientCh.writeAndFlush(
-                                new DatagramPacket(Unpooled.copiedBuffer(sendData), new InetSocketAddress("localhost",DHTManager.ovsPort))).addListener(ChannelFutureListener.CLOSE);
-
-                        if(logging) {
-                            System.out.println("send oid:");
-                            for (int i = 0 ; i < LM_HDR_LENGTH ; i++) {
-                                System.out.printf("%02x",sendData[6+i]);
-                            }
-                            System.out.println();
-
-                        }
-                        if(DHTManager.logFileOut) {
-                            Date enddate = new Date();
-                            long endtime = enddate.getTime();
-                            long diff = endtime-starttime;
-
-                            String fileName = "/DHTGetDelay.log";
-                            fileName = System.getProperty("user.dir")+fileName.trim();
-                            File file = new File (fileName);
-
-                            FileWriter fw = null;
-                            BufferedWriter bw = null;
-                            PrintWriter out = null;
-                            try{
-                                fw = new FileWriter(file, true);
-                                bw = new BufferedWriter(fw);
-                                out = new PrintWriter(bw);
-
-                                out.println(diff);
-
-                            } catch (IOException e) {
-                                //exception handling left as an exercise for the reader
-                            } finally {
-                                if (out != null) {
-                                    out.close();
-                                }
-                                if (bw != null) {
-                                    bw.close();
-                                }
-                                if (fw != null) {
-                                    fw.close();
-                                }
-                            }
-                        }
-
-                         */
-
-                        //GOTO (4)
-                    }
-
-                }
-                if (isLocalityIdSame) { //(2) is entry's locality ID same to this locality ID?
-                    //(4) Update entry on this locality site and replicate it
-                } else { // !isLocalityIdSame
-                    //(3) Keep prior locality ID and revise entry's locality ID
-                    //Update entry on this locality site
-                    //Update entry on prior locality site
-                }
-                // Return entry to OvS kernal module
-            }
-
-        }
-        else if(opCode == OPCODE_GET_IPPORT){
-            //In this case, input is a string of hostIP:Port Number
-            byte lswitchNum = switchNum;
-            byte[] lbyteHostIP = byteHostIP.clone();
-            byte[] lhashedIP = hashedIP.clone();
-            String firstSHA = sha256(input);
-            boolean isLocalityIdSame = false;
-            if (localityID != null && localityAwareNode != null) {
-                //Search entry with MOID on Edge's locality site
-                String valueLA = localityAwareNode.getResourceByNameID(localityID, firstSHA);
-                if (valueLA != null && !valueLA.equals("")) { //Hit
-                    //TODO
-                    //Revise entry's locator from prior Edge to recent Edge
-                    //Jaehyun implements sending UDP packet to OVS
-                    if (logging)
-                        System.out.println("OpCode = " + OPCODE_GET_IPPORT + ", " + valueLA);
-                    String foundData = valueLA;
-                    int nPort = Integer.parseInt(input.split(":")[1]);
-                    String strPort = Integer.toHexString(nPort);
-
-                    switch (4 - strPort.length()) {
-                        case 4:
-                            strPort = "0000";
-                            break;
-                        case 3:
-                            strPort = "000" + strPort;
-                            break;
-                        case 2:
-                            strPort = "00" + strPort;
-                            break;
-                        case 1:
-                            strPort = "0" + strPort;
-                            break;
-                    }
-
-                    JsonParser parser = new JsonParser();
-                    JsonObject jobj = new JsonObject();
-
-
-                    jobj = (JsonObject) parser.parse(foundData);
-                    String recvData = jobj.get(HOME_TARGET_HOST + "").getAsString() + jobj.get(ES_IP + "").getAsString() + jobj.get(VISITING_IP + "").getAsString() + strPort;
-
-                    byte[] sendData = new byte[49];//Jaehee modified 160720
-
-                    sendData[0] = OPCODE_NEW_APP;
-                    sendData[1] = lswitchNum;
                     for (int i = 0; i < 4; i++) {
-                        sendData[2 + (3 - i)] = (byte) ((Character.digit(recvData.charAt(i * 2), 16) << 4) + Character.digit(recvData.charAt(i * 2 + 1), 16)); //HOME_TARGET_HOST
-                        sendData[6 + (3 - i)] = (byte) ((Character.digit(recvData.charAt((i + 4) * 2), 16) << 4) + Character.digit(recvData.charAt((i + 4) * 2 + 1), 16)); //ES_IP
-                        sendData[10 + (3 - i)] = (byte) ((Character.digit(recvData.charAt((i + 8) * 2), 16) << 4) + Character.digit(recvData.charAt((i + 8) * 2 + 1), 16)); //VISITING_IP
+                        sendData[2 + (3 - i)] = (byte) ((Character.digit(recvData.charAt(i * 2), 16) << 4) + Character.digit(recvData.charAt(i * 2 + 1), 16));
+                        sendData[6 + LM_HDR_LENGTH + (3 - i)] = (byte) ((Character.digit(recvData.charAt((i + 4) * 2), 16) << 4) + Character.digit(recvData.charAt((i + 4) * 2 + 1), 16));
                     }//Jaehee modified 160720
-
-                    for (int i = 0; i < 2; i++) {
-                        sendData[14 + i] = (byte) ((Character.digit(recvData.charAt((i + 12) * 2), 16) << 4) + Character.digit(recvData.charAt((i + 12) * 2 + 1), 16)); //strPort
-                    }
                     for (int i = 0; i < LM_HDR_LENGTH; i++) {//Jaehee modified 160720
-                        sendData[16 + i] = lhashedIP[i];
+                        sendData[6 + i] = lhashedIP[i];
                     }
+                    sendData[42] = '\0';
 
-                    sendData[48] = '\0';
-
+                    // Return entry to OvS kernal module
                     Channel clientCh = null;
                     try {
                         clientCh = bClient.bind(0).sync().channel();
                         clientCh.writeAndFlush(
-                                new DatagramPacket(Unpooled.copiedBuffer(sendData),
-                                        new InetSocketAddress("localhost", ovsPort)))
-                                .addListener(ChannelFutureListener.CLOSE);
+                                new DatagramPacket(Unpooled.copiedBuffer(sendData), new InetSocketAddress("localhost", ovsPort))).addListener(ChannelFutureListener.CLOSE);
 
                     } catch (InterruptedException e) {
                         e.printStackTrace();
@@ -1502,7 +1160,7 @@ class DHTServer {
                     if (logging) {
                         System.out.println("send oid:");
                         for (int i = 0; i < LM_HDR_LENGTH; i++) {
-                            System.out.printf("%02x", sendData[16 + i]);
+                            System.out.printf("%02x", sendData[6 + i]);
                         }
                         System.out.println();
                     }
@@ -1539,124 +1197,485 @@ class DHTServer {
                             }
                         }
                     }
-
                     //GOTO (2)
                 } else { // Fail
-                    //Search entry with network address of IP address on IP address approach
-                    String[] ipSplit = input.split("\\.");
-                    String nameId = "";
-                    //ONLY USE THIRD IP FIELD 8 bits FOR Prefix
-                    Integer item = Integer.parseInt(ipSplit[2]);
-                    nameId = "1" + String.format("%8s", Integer.toBinaryString(item)).replaceAll(" ", "0").substring(1);
-                    String valueIA = ipAddressAwareNode.getResourceByNameID(nameId, firstSHA);
-                    if (valueIA != null && !valueIA.equals("")) { //Hit
-                        //Revise entry's locator from prior Edge to recent Edge
-                        //GOTO (2)
+                    // Write new entry, home site is recent Edge
 
-                    } else { // Fail
-                        // Search entry with MOID on DHT network
-                        String valueHash = ipAddressAwareNode.getResource(firstSHA);
-                        if (valueHash != null) { //Hit
-                            //GOTO (3)
-                        } else { // Fail
-                            // Write new entry, home site is recent Edge
-                            //TODO
-                            /*
-                            if(logging)System.out.println("Get Failed.");
+                    //TODO
+                    /*
+                    if(logging)System.out.println("Get Failed.");
 
-                            int nPort = Integer.parseInt(input.split(":")[1]);
-                            String strPort = Integer.toHexString(nPort);
+                    firstSHA = sha256(input).getBytes();
+                    DHTManager.skipGraphServer.get(OPCODE_GET_IPPORT, input, switchNum, lbyteHostIP, firstSHA);
 
-                            switch (4-strPort.length()){
-                                case 4 : strPort = "0000";
-                                    break;
-                                case 3 : strPort = "000"+strPort;
-                                    break;
-                                case 2 : strPort = "00"+strPort;
-                                    break;
-                                case 1 : strPort = "0"+strPort;
-                                    break;
+                    if(DHTManager.logFileOut) {
+
+                        Date enddate = new Date();
+                        long endtime = enddate.getTime();
+                        long diff = endtime-starttime;
+
+                        String fileName = "/DHTGetDelay.log";
+                        fileName = System.getProperty("user.dir")+fileName.trim();
+                        File file = new File (fileName);
+
+                        FileWriter fw = null;
+                        BufferedWriter bw = null;
+                        PrintWriter out = null;
+                        try{
+                            fw = new FileWriter(file, true);
+                            bw = new BufferedWriter(fw);
+                            out = new PrintWriter(bw);
+
+                            out.println(diff);
+
+                        } catch (IOException e) {
+                            //exception handling left as an exercise for the reader
+                        } finally {
+                            if (out != null) {
+                                out.close();
                             }
-                            byte[] sendData = new byte[49];//Jaehee modified 160720
-
-                            sendData[0] = OPCODE_NEW_APP;
-                            sendData[1] = switchNum;
-                            for (int i = 0; i < 4;i++){
-                                sendData[2+(3-i)] = byteHostIP[i];
-                                sendData[6+i] = 0x00;
-                                sendData[10+(3-i)] = byteHostIP[i];
-                            }//Jaehee modified 170329
-                            for (int i = 0; i < 2;i++){
-                                sendData[14+i] = (byte) ((Character.digit(strPort.charAt(i*2), 16) << 4) + Character.digit(strPort.charAt(i*2+1), 16)); //strPort
-
+                            if (bw != null) {
+                                bw.close();
                             }
-
-                            for (int i = 0; i < LM_HDR_LENGTH;i++){ //Jaehee modified 160720
-                                sendData[16+i]=  hashedIP[i];
+                            if (fw != null) {
+                                fw.close();
                             }
+                        }
+                    }
+                    */
 
-                            sendData[48]='\0';
+                    //GOTO (4)
+                }
+//                else { // !isLocalityIdSame
+//                    //(3) Keep prior locality ID and revise entry's locality ID
+//                    //Update entry on this locality site
+//                    //Update entry on prior locality site
+//                }
+            }
+        } else if (opCode == OPCODE_GET_IP) {
+            //In this case, input is an objectKey
+            String firstSHA = input;
+            boolean isLocalityIdSame = false;
+            boolean isHit = false;
+            String searchResult = null;
+            if (localityID != null && localityAwareNode != null) {
+                //Search entry with MOID on Edge's locality site
+                if(logging)System.out.println("Locality-aware approach searching");
+                String valueLA = localityAwareNode.getResourceByNameID(localityID, firstSHA);
+                if (valueLA != null && !valueLA.equals("")) { //Hit
+                    isHit = true;
+                    searchResult = valueLA;
+                }
+            }
+            if (!isHit) { //Locality-aware approach searching failed
+                //Search entry with hashed IP address, MOID
+                if(logging)System.out.println("Hash approach searching");
+                String valueHash = ipAddressAwareNode.getResource(firstSHA);
+                if (valueHash != null && !valueHash.equals("")) { //Hit
+                    isHit = true;
+                    searchResult = valueHash;
+                }
+            }
+            if (isHit) { //Locality-aware approach searching failed
 
-                            Channel clientCh = DHTManager.bClient.bind(0).sync().channel();
-                            clientCh.writeAndFlush(
-                                    new DatagramPacket(Unpooled.copiedBuffer(sendData), new InetSocketAddress("localhost",DHTManager.ovsPort))).addListener(ChannelFutureListener.CLOSE);
+                //Jaehyun needs to implement sending UDP packet to OVS
+                if (logging) System.out.println("OpCode = OPCODE_GET_IP, " + searchResult);
+                String foundData = searchResult;
 
+                JsonObject jobj = new JsonObject();
+                jobj = (JsonObject) new JsonParser().parse(foundData);
 
+                String recvData = jobj.get(VISITING_IP + "").getAsString() + jobj.get(ES_IP + "").getAsString();
 
-                            if(logging) {
-                                System.out.println("send oid:");
-                                for (int i = 0 ; i < LM_HDR_LENGTH ; i++) {
-                                    System.out.printf("%02x",sendData[16+i]);
-                                }
-                                System.out.println();
-                            }
-                            if(DHTManager.logFileOut) {
-                                Date enddate = new Date();
-                                long endtime = enddate.getTime();
-                                long diff = endtime-starttime;
+                byte[] sendData = new byte[43];//Jaehee modified 160720
 
-                                String fileName = "/DHTGetDelay.log";
-                                fileName = System.getProperty("user.dir")+fileName.trim();
-                                File file = new File (fileName);
+                sendData[0] = OPCODE_QUERIED_IP;
+                sendData[1] = switchNum;
+                for (int i = 0; i < 4; i++) {
+                    sendData[2 + (3 - i)] = (byte) ((Character.digit(recvData.charAt(i * 2), 16) << 4) + Character.digit(recvData.charAt(i * 2 + 1), 16));
+                    sendData[6 + LM_HDR_LENGTH + (3 - i)] = (byte) ((Character.digit(recvData.charAt((i + 4) * 2), 16) << 4) + Character.digit(recvData.charAt((i + 4) * 2 + 1), 16));
 
-                                FileWriter fw = null;
-                                BufferedWriter bw = null;
-                                PrintWriter out = null;
-                                try{
-                                    fw = new FileWriter(file, true);
-                                    bw = new BufferedWriter(fw);
-                                    out = new PrintWriter(bw);
+                }//Jaehee modified 160720
+                for (int i = 0; i < LM_HDR_LENGTH; i++) {//Jaehee modified 160720
+                    sendData[6 + i] = hashedIP[i];
+                }
 
-                                    out.println(diff);
+                sendData[42] = '\0';
 
-                                } catch (IOException e) {
-                                    //exception handling left as an exercise for the reader
-                                } finally {
-                                    if (out != null) {
-                                        out.close();
-                                    }
-                                    if (bw != null) {
-                                        bw.close();
-                                    }
-                                    if (fw != null) {
-                                        fw.close();
-                                    }
-                                }
-                            }
-                            */
+                // Return entry to OvS kernal module
+                Channel clientCh = null;
+                try {
+                    clientCh = bClient.bind(0).sync().channel();
+                    clientCh.writeAndFlush(
+                            new DatagramPacket(Unpooled.copiedBuffer(sendData), new InetSocketAddress("localhost", ovsPort))).addListener(ChannelFutureListener.CLOSE);
 
-                            //GOTO (4)
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
+
+                if (logging) {
+                    System.out.println("send oid:");
+                    for (int i = 0; i < LM_HDR_LENGTH; i++) {
+                        System.out.printf("%02x", sendData[6 + i]);
+                    }
+                    System.out.println();
+                }
+                if (logFileOut) {
+                    Date enddate = new Date();
+                    long endtime = enddate.getTime();
+                    long diff = endtime - starttime;
+
+                    String fileName = "/DHTGetDelay.log";
+                    fileName = System.getProperty("user.dir") + fileName.trim();
+                    File file = new File(fileName);
+
+                    FileWriter fw = null;
+                    BufferedWriter bw = null;
+                    PrintWriter out = null;
+                    try {
+                        fw = new FileWriter(file, true);
+                        bw = new BufferedWriter(fw);
+                        out = new PrintWriter(bw);
+
+                        out.println(diff);
+
+                    } catch (IOException e) {
+                        //exception handling left as an exercise for the reader
+                    } finally {
+                        if (out != null) {
+                            out.close();
+                        }
+                        if (bw != null) {
+                            bw.close();
+                        }
+                        if (fw != null) {
+                            fw.close();
                         }
                     }
                 }
-                if (isLocalityIdSame) { //(2) is entry's locality ID same to this locality ID?
-                    //(4) Update entry on this locality site and replicate it
-                } else { // !isLocalityIdSame
-                    //(3) Keep prior locality ID and revise entry's locality ID
-                    //Update entry on this locality site
-                    //Update entry on prior locality site
+                //GOTO (2)
+            } else { // Fail
+
+                // Write new entry, home site is recent Edge
+                //TODO
+                    /*
+                    if(logging)System.out.println("Get Failed.");
+
+                    byte[] sendData = new byte[43];//Jaehee modified 160720
+
+                    sendData[0] = OPCODE_QUERIED_IP;
+                    sendData[1] = switchNum;
+                    for (int i = 0; i < 4;i++){
+                        sendData[2+(3-i)] = byteHostIP[i];
+                        sendData[6+LM_HDR_LENGTH+i] = 0x00;
+                    }//Jaehee modified 160720
+                    for (int i = 0; i < LM_HDR_LENGTH;i++){ //Jaehee modified 160720
+                        sendData[6+i]=  hashedIP[i];
+                    }
+
+                    sendData[42]='\0';
+
+
+                    Channel clientCh = DHTManager.bClient.bind(0).sync().channel();
+                    clientCh.writeAndFlush(
+                            new DatagramPacket(Unpooled.copiedBuffer(sendData), new InetSocketAddress("localhost",DHTManager.ovsPort))).addListener(ChannelFutureListener.CLOSE);
+
+                    if(logging) {
+                        System.out.println("send oid:");
+                        for (int i = 0 ; i < LM_HDR_LENGTH ; i++) {
+                            System.out.printf("%02x",sendData[6+i]);
+                        }
+                        System.out.println();
+
+                    }
+                    if(DHTManager.logFileOut) {
+                        Date enddate = new Date();
+                        long endtime = enddate.getTime();
+                        long diff = endtime-starttime;
+
+                        String fileName = "/DHTGetDelay.log";
+                        fileName = System.getProperty("user.dir")+fileName.trim();
+                        File file = new File (fileName);
+
+                        FileWriter fw = null;
+                        BufferedWriter bw = null;
+                        PrintWriter out = null;
+                        try{
+                            fw = new FileWriter(file, true);
+                            bw = new BufferedWriter(fw);
+                            out = new PrintWriter(bw);
+
+                            out.println(diff);
+
+                        } catch (IOException e) {
+                            //exception handling left as an exercise for the reader
+                        } finally {
+                            if (out != null) {
+                                out.close();
+                            }
+                            if (bw != null) {
+                                bw.close();
+                            }
+                            if (fw != null) {
+                                fw.close();
+                            }
+                        }
+                    }*/
+                //GOTO (4)
+            }
+        }
+
+//                else { // !isLocalityIdSame
+//                    //(3) Keep prior locality ID and revise entry's locality ID
+//                    //Update entry on this locality site
+//                    //Update entry on prior locality site
+//                }
+
+        else if(opCode == OPCODE_GET_IPPORT){
+            //In this case, input is a string of hostIP:Port Number
+            byte lswitchNum = switchNum;
+            byte[] lbyteHostIP = byteHostIP.clone();
+            byte[] lhashedIP = hashedIP.clone();
+            String firstSHA = sha256(input);
+            boolean isLocalityIdSame = false;
+            boolean isHit = false;
+            String searchResult = null;
+            if (localityID != null && localityAwareNode != null) {
+                //Search entry with MOID on Edge's locality site
+                if(logging)System.out.println("Locality-aware approach searching");
+                String valueLA = localityAwareNode.getResourceByNameID(localityID, firstSHA);
+                if (valueLA != null && !valueLA.equals("")) { //Hit
+                    isHit = true;
+                    searchResult = valueLA;
                 }
+            }
+            if (!isHit) { //Locality-aware approach searching failed
+                //Search entry with network address of IP address on IP address approach
+                String[] ipSplit = input.split("\\.");
+                String nameId = "";
+                //ONLY USE THIRD IP FIELD 8 bits FOR Prefix
+                Integer item = Integer.parseInt(ipSplit[2]);
+                nameId = "1" + String.format("%8s", Integer.toBinaryString(item)).replaceAll(" ", "0").substring(1);
+                if(logging)System.out.println("IP address-aware approach searching");
+                String valueIA = ipAddressAwareNode.getResourceByNameID(nameId, firstSHA);
+                if (valueIA != null && !valueIA.equals("")) { //Hit
+                    //Revise entry's locator from prior Edge to recent Edge
+                    //GOTO (2)
+                    isHit = true;
+                    searchResult = valueIA;
+                }
+            }
+            if (!isHit) { //IP address-approach searching failed
+                if(logging)System.out.println("Hash approach searching");
+                String valueHash = ipAddressAwareNode.getResource(firstSHA);
+                if (valueHash != null && !valueHash.equals("")) { //Hit
+                    isHit = true;
+                    searchResult = valueHash;
+                }
+            }
+            if (isHit) {
+                //TODO
+                //Revise entry's locator from prior Edge to recent Edge
+                //Jaehyun implements sending UDP packet to OVS
+                if (logging)
+                    System.out.println("OpCode = OPCODE_GET_IPPORT, " + searchResult);
+                String foundData = searchResult;
+                int nPort = Integer.parseInt(input.split(":")[1]);
+                String strPort = Integer.toHexString(nPort);
+
+                switch (4 - strPort.length()) {
+                    case 4:
+                        strPort = "0000";
+                        break;
+                    case 3:
+                        strPort = "000" + strPort;
+                        break;
+                    case 2:
+                        strPort = "00" + strPort;
+                        break;
+                    case 1:
+                        strPort = "0" + strPort;
+                        break;
+                }
+
+                JsonParser parser = new JsonParser();
+                JsonObject jobj = new JsonObject();
+
+                jobj = (JsonObject) parser.parse(foundData);
+                String recvData = jobj.get(HOME_TARGET_HOST + "").getAsString() + jobj.get(ES_IP + "").getAsString() + jobj.get(VISITING_IP + "").getAsString() + strPort;
+
+                byte[] sendData = new byte[49];//Jaehee modified 160720
+
+                sendData[0] = OPCODE_NEW_APP;
+                sendData[1] = lswitchNum;
+                for (int i = 0; i < 4; i++) {
+                    sendData[2 + (3 - i)] = (byte) ((Character.digit(recvData.charAt(i * 2), 16) << 4) + Character.digit(recvData.charAt(i * 2 + 1), 16)); //HOME_TARGET_HOST
+                    sendData[6 + (3 - i)] = (byte) ((Character.digit(recvData.charAt((i + 4) * 2), 16) << 4) + Character.digit(recvData.charAt((i + 4) * 2 + 1), 16)); //ES_IP
+                    sendData[10 + (3 - i)] = (byte) ((Character.digit(recvData.charAt((i + 8) * 2), 16) << 4) + Character.digit(recvData.charAt((i + 8) * 2 + 1), 16)); //VISITING_IP
+                }//Jaehee modified 160720
+
+                for (int i = 0; i < 2; i++) {
+                    sendData[14 + i] = (byte) ((Character.digit(recvData.charAt((i + 12) * 2), 16) << 4) + Character.digit(recvData.charAt((i + 12) * 2 + 1), 16)); //strPort
+                }
+                for (int i = 0; i < LM_HDR_LENGTH; i++) {//Jaehee modified 160720
+                    sendData[16 + i] = lhashedIP[i];
+                }
+
+                sendData[48] = '\0';
+
                 // Return entry to OvS kernal module
+                Channel clientCh = null;
+                try {
+                    clientCh = bClient.bind(0).sync().channel();
+                    clientCh.writeAndFlush(
+                            new DatagramPacket(Unpooled.copiedBuffer(sendData),
+                                    new InetSocketAddress("localhost", ovsPort)))
+                            .addListener(ChannelFutureListener.CLOSE);
+
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
+
+                if (logging) {
+                    System.out.println("send oid:");
+                    for (int i = 0; i < LM_HDR_LENGTH; i++) {
+                        System.out.printf("%02x", sendData[16 + i]);
+                    }
+                    System.out.println();
+                }
+                if (logFileOut) {
+                    Date enddate = new Date();
+                    long endtime = enddate.getTime();
+                    long diff = endtime - starttime;
+
+                    String fileName = "/DHTGetDelay.log";
+                    fileName = System.getProperty("user.dir") + fileName.trim();
+                    File file = new File(fileName);
+
+                    FileWriter fw = null;
+                    BufferedWriter bw = null;
+                    PrintWriter out = null;
+                    try {
+                        fw = new FileWriter(file, true);
+                        bw = new BufferedWriter(fw);
+                        out = new PrintWriter(bw);
+
+                        out.println(diff);
+
+                    } catch (IOException e) {
+                        //exception handling left as an exercise for the reader
+                    } finally {
+                        if (out != null) {
+                            out.close();
+                        }
+                        if (bw != null) {
+                            bw.close();
+                        }
+                        if (fw != null) {
+                            fw.close();
+                        }
+                    }
+                }
+            }
+            else { //Failed
+            }
+
+            //GOTO (2)
+                // Write new entry, home site is recent Edge
+                //TODO
+                /*
+                if(logging)System.out.println("Get Failed.");
+
+                int nPort = Integer.parseInt(input.split(":")[1]);
+                String strPort = Integer.toHexString(nPort);
+
+                switch (4-strPort.length()){
+                    case 4 : strPort = "0000";
+                        break;
+                    case 3 : strPort = "000"+strPort;
+                        break;
+                    case 2 : strPort = "00"+strPort;
+                        break;
+                    case 1 : strPort = "0"+strPort;
+                        break;
+                }
+                byte[] sendData = new byte[49];//Jaehee modified 160720
+
+                sendData[0] = OPCODE_NEW_APP;
+                sendData[1] = switchNum;
+                for (int i = 0; i < 4;i++){
+                    sendData[2+(3-i)] = byteHostIP[i];
+                    sendData[6+i] = 0x00;
+                    sendData[10+(3-i)] = byteHostIP[i];
+                }//Jaehee modified 170329
+                for (int i = 0; i < 2;i++){
+                    sendData[14+i] = (byte) ((Character.digit(strPort.charAt(i*2), 16) << 4) + Character.digit(strPort.charAt(i*2+1), 16)); //strPort
+
+                }
+
+                for (int i = 0; i < LM_HDR_LENGTH;i++){ //Jaehee modified 160720
+                    sendData[16+i]=  hashedIP[i];
+                }
+
+                sendData[48]='\0';
+
+                Channel clientCh = DHTManager.bClient.bind(0).sync().channel();
+                clientCh.writeAndFlush(
+                        new DatagramPacket(Unpooled.copiedBuffer(sendData), new InetSocketAddress("localhost",DHTManager.ovsPort))).addListener(ChannelFutureListener.CLOSE);
+
+
+
+                if(logging) {
+                    System.out.println("send oid:");
+                    for (int i = 0 ; i < LM_HDR_LENGTH ; i++) {
+                        System.out.printf("%02x",sendData[16+i]);
+                    }
+                    System.out.println();
+                }
+                if(DHTManager.logFileOut) {
+                    Date enddate = new Date();
+                    long endtime = enddate.getTime();
+                    long diff = endtime-starttime;
+
+                    String fileName = "/DHTGetDelay.log";
+                    fileName = System.getProperty("user.dir")+fileName.trim();
+                    File file = new File (fileName);
+
+                    FileWriter fw = null;
+                    BufferedWriter bw = null;
+                    PrintWriter out = null;
+                    try{
+                        fw = new FileWriter(file, true);
+                        bw = new BufferedWriter(fw);
+                        out = new PrintWriter(bw);
+
+                        out.println(diff);
+
+                    } catch (IOException e) {
+                        //exception handling left as an exercise for the reader
+                    } finally {
+                        if (out != null) {
+                            out.close();
+                        }
+                        if (bw != null) {
+                            bw.close();
+                        }
+                        if (fw != null) {
+                            fw.close();
+                        }
+                    }
+                }
+                */
+            //GOTO (4)
+
+            }
+
+//                } else { // !isLocalityIdSame
+//                    //(3) Keep prior locality ID and revise entry's locality ID
+//                    //Update entry on this locality site
+//                    //Update entry on prior locality site
+//                }
+
 
                 //NOT TODO
                 //old code
@@ -1681,8 +1700,6 @@ class DHTServer {
 //						if(logging)System.out.println("Get Failed");
 //					}
                 //old code ends
-            }
-        }
     }
 
     //TODO

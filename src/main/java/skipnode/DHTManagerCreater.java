@@ -1,4 +1,14 @@
 package skipnode;
+/* -------------------------------------------------------- */
+/**
+ File name : DHTManagerCreator.java
+ Rev. history : 2021-06-14
+ Version : 1.1.6
+ Added this class.
+ Modifier : Jaehee ha (jaehee.ha@kaist.ac.kr)
+ */
+/* -------------------------------------------------------- */
+
 
 import java.util.ArrayList;
 
@@ -21,17 +31,14 @@ public class DHTManagerCreater {
                     String[] args2;
                     if (args.length == 5) { // w/o "logging"
                         args2 = new String[3];
-                        args2[0] = args[0];
-                        args2[1] = args[1];
-                        args2[2] = args[2];
                     }
                     else { // w/ "logging"
                         args2 = new String[4];
-                        args2[0] = args[0];
-                        args2[1] = args[1];
-                        args2[2] = args[2];
                         args2[3] = args[5];
                     }
+                    args2[0] = args[0];
+                    args2[1] = args[1];
+                    args2[2] = args[2];
                     DHTManagerThread dhtManager = new DHTManagerThread(args2);
                     dhtManager.start();
                     if (logging)System.out.println("First DHT manager thread #0 is started.");
@@ -43,18 +50,20 @@ public class DHTManagerCreater {
                     dhtMngThrLst.add(dhtManager);
                 }
                 try {
-                    Thread.sleep(500);
+                    Thread.sleep(2000);
                 } catch (InterruptedException e) {
                     e.printStackTrace();
                 }
             }
             if (MAX_DHT_MNG_COUNT > 1) {
+                int dhtNum = Integer.parseInt(args[2]) + 1;
                 for (int i = 1 ; i < MAX_DHT_MNG_COUNT ; i++) {
-                    args[2] = i+"";
+                    args[2] = dhtNum+"";
                     DHTManagerThread dhtManager = new DHTManagerThread(args);
                     dhtManager.start();
                     if (logging)System.out.println("DHT manager thread #"+i+" is started.");
                     dhtMngThrLst.add(dhtManager);
+                    dhtNum++;
                     try {
                         Thread.sleep(2000);
                     } catch (InterruptedException e) {

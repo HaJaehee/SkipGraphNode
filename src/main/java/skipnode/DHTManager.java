@@ -48,6 +48,11 @@ package skipnode;
  Switch number and ip list including function is implemented.
  Modifier : Jaehee ha (jaehee.ha@kaist.ac.kr)
 
+ Rev. history : 2021-06-14
+ Version : 1.1.6
+ Removed useless static variables.
+ Modifier : Jaehee ha (jaehee.ha@kaist.ac.kr)
+
  TODO
  store(put), get(search),
  More sophisticated implementation of get()
@@ -142,6 +147,11 @@ public final class DHTManager {
 
 
         kvMap = new HashMap<String, String>();
+        EventLoopGroup groupClient = new NioEventLoopGroup();
+        bClient = new Bootstrap();
+        bClient.group(groupClient)
+                .channel(NioDatagramChannel.class)
+                .handler(new ClientHandler());
 
         if (input == null) {
             if ((args.length == 3) ||
@@ -169,6 +179,8 @@ public final class DHTManager {
                 if(args.length == 3 && args[2].equals("logging")) {
                     logging = true;
                 }
+                edgeNum = Integer.parseInt(args[0]);
+                dhtNum = 0;
                 System.out.println("Reset switch.");
                 justReset = true;
 
@@ -207,8 +219,6 @@ public final class DHTManager {
                 }
                 return;
             }
-            int edgeNum = Integer.parseInt(args[0]);
-            int dhtNum = Integer.parseInt(args[2]);
             nodeIndex = (100*edgeNum) + dhtNum;
         }
 //        else { // input != null, only for test
@@ -233,10 +243,16 @@ public final class DHTManager {
 //        }
 
         if (onEmulator) {
+            String dir = System.getProperty("user.dir");
+            if (dir.contains("target")) {
+                dir = dir+"/..";
+            }
+            File file = new File(dir + "/src/main/java/skipnode/korea-100-router-node-num-ip-list.txt");
+
             swIPAddrList = new ArrayList<String>();
             edgeSWList = new ArrayList<Short>();
             swCount = 0;
-            File file = new File( System.getProperty("user.dir")+"/src/main/java/skipnode/korea-100-router-node-num-ip-list.txt");
+
             try (BufferedReader br = new BufferedReader(new FileReader(file))) {
                 String line;
                 while ((line = br.readLine()) != null) {
@@ -246,19 +262,13 @@ public final class DHTManager {
                 }
                 if (swIPAddrList.size() > 0 && edgeSWList.size() > 0) {
                     swCount = swIPAddrList.size();
-                    if(logging)System.out.println("Edge node number and IP is loaded. First node: (" + edgeSWList.get(0)+", "+swIPAddrList.get(0)+")");
+                    if (logging)
+                        System.out.println("Edge node number and IP is loaded. First node: (" + edgeSWList.get(0) + ", " + swIPAddrList.get(0) + ")");
                 }
             } catch (IOException e) {
                 e.printStackTrace();
             }
         }
-
-
-        EventLoopGroup groupClient = new NioEventLoopGroup();
-        bClient = new Bootstrap();
-        bClient.group(groupClient)
-                .channel(NioDatagramChannel.class)
-                .handler(new ClientHandler());
 
         Thread.sleep(1000);
 

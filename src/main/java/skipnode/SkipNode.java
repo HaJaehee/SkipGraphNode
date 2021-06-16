@@ -57,6 +57,9 @@ package skipnode;
 /* -------------------------------------------------------- */
 
 
+import com.google.gson.JsonArray;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
 import lookup.LookupTable;
 import middlelayer.MiddleLayer;
 import org.slf4j.Logger;
@@ -91,6 +94,8 @@ public class SkipNode implements SkipNodeInterface {
     private final int redisTimeout;
     private JedisPool jedisPool;
     private static HashMap<String, String> kvMap;
+
+    private static final int LID_LIST = 7;
 
     private MiddleLayer middleLayer;
 
@@ -457,8 +462,8 @@ public class SkipNode implements SkipNodeInterface {
      * @return The resource value
      */
     @Override
-    public SkipNodeIdentity getResourceByNumID(BigInteger numID) {
-        return handleResourceByNumID(numID, true, false, null);
+    public String getResourceByNumID(BigInteger numID) {
+        return handleResourceByNumID(numID, true, false, null).getResourceQueryResult();
     }
 
     /**
@@ -468,9 +473,9 @@ public class SkipNode implements SkipNodeInterface {
      * @return The resource value
      */
     @Override
-    public SkipNodeIdentity getResourceByResourceKey(String resourceKey) throws NumberFormatException{
+    public String getResourceByResourceKey(String resourceKey) throws NumberFormatException{
         BigInteger intResourceKey = new BigInteger(resourceKey, 16);
-        return handleResourceByNumID(intResourceKey, true, false, null);
+        return handleResourceByNumID(intResourceKey, true, false, null).getResourceQueryResult();
     }
 
     /**
@@ -536,6 +541,12 @@ public class SkipNode implements SkipNodeInterface {
         }
     }
 
+    //TODO
+    /*
+        isSettingResource 일 때
+        LID_LIST에 있는 Locality들에다가 정보 업데이트
+
+     */
     /**
      * Handle the Redis system by facilitating the Jedis library with a number ID.
      * @param numID
@@ -563,6 +574,16 @@ public class SkipNode implements SkipNodeInterface {
                     //TODO response is not used in this version.
                 }
             }
+            JsonParser jparser = new JsonParser();
+            JsonObject jobj = (JsonObject) jparser.parse(resourceValue);
+            JsonArray jarray = jobj.getAsJsonArray(LID_LIST+"");
+            if (jarray != null) {
+                for (int i = 0; i < jarray.size() ; i++) {
+                    //이거 하면 무한루프 돌텐디 어떻게 막지?
+                    //nameId로 하니까 안돌려나
+                    storeResourceByNameID(jarray.get(i).toString(), numID.toString(16), resourceValue);
+                }
+            }
             returnResourceQueryResult = null;
         }
         else if (isGettingResource && !isUsingRedis && kvMap != null) {
@@ -578,6 +599,17 @@ public class SkipNode implements SkipNodeInterface {
                 else {
                     SkipNodeIdentity response = middleLayer.storeResource(i.getAddress(), i.getPort(), numID, resourceValue);
                     //TODO response is not used in this version.
+                }
+            }
+            JsonParser jparser = new JsonParser();
+            JsonObject jobj = (JsonObject) jparser.parse(resourceValue);
+            JsonArray jarray = jobj.getAsJsonArray(LID_LIST+"");
+            if (jarray != null) {
+                for (int i = 0; i < jarray.size() ; i++) {
+                    //이거 하면 무한루프 돌텐디 어떻게 막지?
+                    //nameId로 하니까 안돌려나
+                    //이건 그렇다 치고, get 받았을 때 hit 했으면 locality ID list를 요청한 놈의 id도 업데이트 해야 함
+                    storeResourceByNameID(jarray.get(i).toString(), numID.toString(16), resourceValue);
                 }
             }
             returnResourceQueryResult = null;
@@ -674,7 +706,7 @@ public class SkipNode implements SkipNodeInterface {
 
     private SearchResult handleResourceByNameID(String targetNameID, boolean isGettingResource, boolean isSettingResource, String resourceKey, String resourceValue) {
 
-        if(nameID.equals(targetNameID)) {
+        if(nameID.equals(targetNameID) || SkipNodeIdentity.commonBits(nameID, targetNameID) == lookupTable.getNumLevels()) {
             return new SearchResult(getIdentity(handleJedisWithNameID(isGettingResource, isSettingResource, resourceKey, resourceValue)));
         }
         // If the node is not completely inserted yet, return a tentative identity.
@@ -732,8 +764,11 @@ public class SkipNode implements SkipNodeInterface {
      * @return the node with the name ID most similar to the target name ID.
      */
     @Override
-    public SkipNodeIdentity getResourceByNameID(String targetNameID, String resourceKey) {
-        return handleResourceByNameID(targetNameID, true, false, resourceKey, null).result;
+    public String getResourceByNameID(String targetNameID, String resourceKey) {
+        SkipNodeIdentity searchResultIdentity = handleResourceByNameID(targetNameID, true, false, resourceKey, null).result;
+        String searchResultResource = searchResultIdentity.getResourceQueryResult();
+
+        return searchResultResource;
     }
 
     /**

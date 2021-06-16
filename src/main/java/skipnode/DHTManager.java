@@ -929,7 +929,6 @@ class DHTServer {
     private final Bootstrap bClient;
     private final int ovsPort = 9999;
 
-
     public DHTServer(String ip, int portNumber, String localityID, HashMap kvMap, boolean logging, boolean logFileOut,
                      int edgeNum, int dhtNum, Bootstrap bClient) throws Exception {
         this.logging = logging;
@@ -1149,8 +1148,7 @@ class DHTServer {
                     System.out.println("Locality ID: "+localityID);
                     System.out.println("Key: "+firstSHA);
                 }
-                nodeIdentity = localityAwareNode.getResourceByNameID(localityID, firstSHA);
-                String valueLA = nodeIdentity.getResourceQueryResult();
+                String valueLA = localityAwareNode.getResourceByNameID(localityID, firstSHA);
                 if (valueLA != null && !valueLA.equals("")) { //Hit
                     isHit = true;
                     searchResult = valueLA;
@@ -1170,8 +1168,7 @@ class DHTServer {
                     System.out.println("IP based name ID: "+nameId);
                     System.out.println("Key: "+firstSHA);
                 }
-                nodeIdentity = ipAddressAwareNode.getResourceByNameID(nameId, firstSHA);
-                String valueIA = nodeIdentity.getResourceQueryResult();
+                String valueIA = ipAddressAwareNode.getResourceByNameID(nameId, firstSHA);
                 if (valueIA != null && !valueIA.equals("")) { //Hit
                     //Revise entry's locator from prior Edge to recent Edge
                     //GOTO (2)
@@ -1184,8 +1181,7 @@ class DHTServer {
                     System.out.println("Hash approach searching");
                     System.out.println("Key: "+firstSHA);
                 }
-                nodeIdentity = ipAddressAwareNode.getResourceByResourceKey(firstSHA);
-                String valueHash = nodeIdentity.getResourceQueryResult();
+                String valueHash = ipAddressAwareNode.getResourceByResourceKey(firstSHA);
                 if (valueHash != null && !valueHash.equals("")) { //Hit
                     isHit = true;
                     searchResult = valueHash;
@@ -1234,11 +1230,6 @@ class DHTServer {
                         }
                         System.out.println();
                     }
-
-                    if (localityAwareNode != null) {
-                        localityAwareNode.storeResourceByNameID()
-                    }
-                    ipAddressAwareNode.storeResourceByNameID()
 
                     if (logFileOut) {
                         Date enddate = new Date();

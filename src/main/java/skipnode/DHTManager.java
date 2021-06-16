@@ -1072,6 +1072,55 @@ class DHTServer {
         return sb.toString();
     }
 
+    public String buildJsonDHTEntry (JsonObject jobj) {
+        String returnValue = null;
+        String lEsIP = jobj.get(ES_IP+"").toString();
+        String lLocalityID = jobj.get(LOCALITY_ID+"").toString();
+        String lVisitingIP = jobj.get(VISITING_IP+"").toString();
+        String lHomeTargetHost = jobj.get(HOME_TARGET_HOST+"").toString();
+        String lVisitingTargetHost = jobj.get(VISITING_TARGET_HOST+"").toString();
+        JsonArray jarray= jobj.get(LID_LIST+"").getAsJsonArray();
+        if (localityID != null) {
+            boolean isLocalityIdSame = false;
+            if (jobj.get(LOCALITY_ID+"").toString().equals(localityID)) {
+                isLocalityIdSame = true;
+            }
+            for (int i = 0 ; i < jarray.size() ; i++) {
+                if (jarray.get(i).toString().equals(localityID)){
+                    isLocalityIdSame = true;
+                }
+            }
+            if (!isLocalityIdSame) {
+                jarray.add(localityID);
+                JsonObject newJobj = new JsonObject();
+                returnValue = "{";
+                if (lEsIP != null) {
+                    newJobj.add(ES_IP+"",lEsIP.);
+                }
+                if (lLocalityID != null) {
+
+                }
+                if (lVisitingIP != null) {
+
+                }
+                if (lHomeTargetHost != null) {
+
+                }
+                if (lVisitingTargetHost != null) {
+
+                }
+                if (returnValue.endsWith(",")) {
+                    returnValue = returnValue.substring(0, returnValue.length() - 1 ) + "}";
+                }
+                else {
+                    returnValue = returnValue + "}";
+                }
+                localityAwareNode.storeResourceByNameID(localityID, firstSHA, )
+            }
+        }
+        return null;
+    }
+
     //TODO
     public void get(final int opCode, final String input, final byte switchNum, final byte[] byteHostIP,
                     final byte[] hashedIP) throws ClassNotFoundException, IOException, NoSuchAlgorithmException {
@@ -1083,14 +1132,14 @@ class DHTServer {
 
         if (opCode == OPCODE_GET_HASH) {
             //In this case, input is a string of hostIP:port
-            byte lswitchNum = switchNum;
-            byte[] lbyteHostIP = byteHostIP.clone();
-            byte[] lhashedIP = hashedIP.clone();
+            byte lSwitchNum = switchNum;
+            byte[] lByteHostIP = byteHostIP.clone();
+            byte[] lHashedIP = hashedIP.clone();
 
             String strIP = input.split(":")[0];
             String firstSHA = sha256(strIP);
             System.out.println("Key: " + firstSHA);
-            boolean isLocalityIdSame = false;
+
             boolean isHit = false;
             String searchResult = null;
             if (localityID != null && localityAwareNode != null) {
@@ -1153,13 +1202,13 @@ class DHTServer {
                     byte[] sendData = new byte[43];//Jaehee modified 160720
 
                     sendData[0] = OPCODE_QUERIED_HASH;
-                    sendData[1] = lswitchNum;
+                    sendData[1] = lSwitchNum;
                     for (int i = 0; i < 4; i++) {
                         sendData[2 + (3 - i)] = (byte) ((Character.digit(recvData.charAt(i * 2), 16) << 4) + Character.digit(recvData.charAt(i * 2 + 1), 16));
                         sendData[6 + LM_HDR_LENGTH + (3 - i)] = (byte) ((Character.digit(recvData.charAt((i + 4) * 2), 16) << 4) + Character.digit(recvData.charAt((i + 4) * 2 + 1), 16));
                     }//Jaehee modified 160720
                     for (int i = 0; i < LM_HDR_LENGTH; i++) {//Jaehee modified 160720
-                        sendData[6 + i] = lhashedIP[i];
+                        sendData[6 + i] = lHashedIP[i];
                     }
                     sendData[42] = '\0';
 
@@ -1182,12 +1231,8 @@ class DHTServer {
                         System.out.println();
                     }
 
-                    JsonArray jarray= jobj.get(LID_LIST+"").getAsJsonArray();
-                    if (localityID != null) {
-                        if (!jarray.contains(new JsonObject(localityID))) {
 
-                        }
-                    }
+
 
                     if (logFileOut) {
                         Date enddate = new Date();
@@ -1231,7 +1276,7 @@ class DHTServer {
                     if(logging)System.out.println("Get Failed.");
 
                     firstSHA = sha256(input).getBytes();
-                    DHTManager.skipGraphServer.get(OPCODE_GET_IPPORT, input, switchNum, lbyteHostIP, firstSHA);
+                    DHTManager.skipGraphServer.get(OPCODE_GET_IPPORT, input, switchNum, lByteHostIP, firstSHA);
 
                     if(DHTManager.logFileOut) {
 
@@ -1309,7 +1354,6 @@ class DHTServer {
                 }
             }
             if (isHit) { //Locality-aware approach searching failed
-
                 //Jaehyun needs to implement sending UDP packet to OVS
                 if (logging) System.out.println("OpCode = OPCODE_GET_IP, " + searchResult);
                 String foundData = searchResult;
@@ -1470,11 +1514,11 @@ class DHTServer {
 
         else if(opCode == OPCODE_GET_IPPORT){
             //In this case, input is a string of hostIP:Port Number
-            byte lswitchNum = switchNum;
-            byte[] lbyteHostIP = byteHostIP.clone();
-            byte[] lhashedIP = hashedIP.clone();
+            byte lSwitchNum = switchNum;
+            byte[] lByteHostIP = byteHostIP.clone();
+            byte[] lHashedIP = hashedIP.clone();
             String firstSHA = sha256(input);
-            boolean isLocalityIdSame = false;
+
             boolean isHit = false;
             String searchResult = null;
             if (localityID != null && localityAwareNode != null) {
@@ -1555,7 +1599,7 @@ class DHTServer {
                 byte[] sendData = new byte[49];//Jaehee modified 160720
 
                 sendData[0] = OPCODE_NEW_APP;
-                sendData[1] = lswitchNum;
+                sendData[1] = lSwitchNum;
                 for (int i = 0; i < 4; i++) {
                     sendData[2 + (3 - i)] = (byte) ((Character.digit(recvData.charAt(i * 2), 16) << 4) + Character.digit(recvData.charAt(i * 2 + 1), 16)); //HOME_TARGET_HOST
                     sendData[6 + (3 - i)] = (byte) ((Character.digit(recvData.charAt((i + 4) * 2), 16) << 4) + Character.digit(recvData.charAt((i + 4) * 2 + 1), 16)); //ES_IP
@@ -1566,7 +1610,7 @@ class DHTServer {
                     sendData[14 + i] = (byte) ((Character.digit(recvData.charAt((i + 12) * 2), 16) << 4) + Character.digit(recvData.charAt((i + 12) * 2 + 1), 16)); //strPort
                 }
                 for (int i = 0; i < LM_HDR_LENGTH; i++) {//Jaehee modified 160720
-                    sendData[16 + i] = lhashedIP[i];
+                    sendData[16 + i] = lHashedIP[i];
                 }
 
                 sendData[48] = '\0';
@@ -1952,9 +1996,9 @@ class DHTServer {
 			String firstSHA = sha256(input);
 			FutureDHT futureDHT = peer.get(Number160.createHash(firstSHA)).start();
 			futureDHT.addListener(new BaseFutureAdapter<FutureDHT>() {
-				private byte lswitchNum = switchNum;
+				private byte lSwitchNum = switchNum;
 				private byte[] lbyte_host_ip = byte_host_ip.clone();
-				private byte[] lhashedIP = hashedIP.clone();
+				private byte[] lHashedIP = hashedIP.clone();
 				@Override
 				public void operationComplete(FutureDHT future)
 						throws Exception {
@@ -1965,7 +2009,7 @@ class DHTServer {
 						byte[] send_data = new byte[42];//Jaehee modified 160720
 
 						send_data[0] = 0x01; //OPCODE_GET_HASH
-						send_data[1] = lswitchNum;
+						send_data[1] = lSwitchNum;
 						for (int i = 0; i < 4;i++){
 							send_data[2+(3-i)] = (byte) ((Character.digit(recv_data.charAt(i*2), 16) << 4) + Character.digit(recv_data.charAt(i*2+1), 16));
 							send_data[26+i] = (byte) ((Character.digit(recv_data.charAt((i+4)*2), 16) << 4) + Character.digit(recv_data.charAt((i+4)*2+1), 16));

@@ -457,8 +457,8 @@ public class SkipNode implements SkipNodeInterface {
      * @return The resource value
      */
     @Override
-    public String getResourceByNumID(BigInteger numID) {
-        return handleResourceByNumID(numID, true, false, null).getResourceQueryResult();
+    public SkipNodeIdentity getResourceByNumID(BigInteger numID) {
+        return handleResourceByNumID(numID, true, false, null);
     }
 
     /**
@@ -468,9 +468,9 @@ public class SkipNode implements SkipNodeInterface {
      * @return The resource value
      */
     @Override
-    public String getResourceByResourceKey(String resourceKey) throws NumberFormatException{
+    public SkipNodeIdentity getResourceByResourceKey(String resourceKey) throws NumberFormatException{
         BigInteger intResourceKey = new BigInteger(resourceKey, 16);
-        return handleResourceByNumID(intResourceKey, true, false, null).getResourceQueryResult();
+        return handleResourceByNumID(intResourceKey, true, false, null);
     }
 
     /**
@@ -732,8 +732,8 @@ public class SkipNode implements SkipNodeInterface {
      * @return the node with the name ID most similar to the target name ID.
      */
     @Override
-    public String getResourceByNameID(String targetNameID, String resourceKey) {
-        return handleResourceByNameID(targetNameID, true, false, resourceKey, null).result.getResourceQueryResult();
+    public SkipNodeIdentity getResourceByNameID(String targetNameID, String resourceKey) {
+        return handleResourceByNameID(targetNameID, true, false, resourceKey, null).result;
     }
 
     /**

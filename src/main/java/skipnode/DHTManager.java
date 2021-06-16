@@ -63,10 +63,14 @@ package skipnode;
  OPCODE_INFORM_CONNECTION에서 자기의 locality에 저장하는 건 okay.
  OPCODE_GET_HASH, OPCODE_GET_IP, OPCODE_GET_IPPORT 이 때도 query를 수행한 locality에 복제해야 하는데
  이 부분을 구현해야겠구만.
+ get 했을 때 LID_LIST에 복제해서 저장해야 하는 이슈 ---- 누가??
+ store 할 때 한 번 get하고 LID_LIST에 복제해서 저장해야 하는 이슈 ---- 누가??
+
  */
 /* -------------------------------------------------------- */
 
 import com.google.gson.JsonArray;
+import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import io.netty.bootstrap.Bootstrap;
@@ -86,6 +90,7 @@ import java.io.*;
 import java.math.BigInteger;
 import java.net.*;
 import java.nio.ByteBuffer;
+import java.nio.file.LinkPermission;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.*;
@@ -522,7 +527,8 @@ class DHTManagerHandler extends SimpleChannelInboundHandler<DatagramPacket> {
 
             if(logging)System.out.printf("[Node %d] Storing the pair: (Host IP=%s, Switch IP=%s)\n", nodeIndex,strIP,strSWIP);
 
-            skipGraphServer.store(strIP, byteHostIP, byteSwitchIP);
+            JsonObject jobj = skipGraphServer.get(strIP);
+            skipGraphServer.store(strIP, byteHostIP, byteSwitchIP, jobj);
 
             byte[] sendBuf = new byte[42];
             sendBuf[0] = OPCODE_UPDATE_IP;
@@ -605,7 +611,8 @@ class DHTManagerHandler extends SimpleChannelInboundHandler<DatagramPacket> {
                 System.out.printf("[Node %d] Storing the pair: (Original Host IP=%s, Port Number=%s, New Host IP=%s, New Edge Switch IP=%s)\n", nodeIndex, strHomeTargetHostIP, strPortNumber, strVisitingTargetHostIP, strVisitingESIP);
             }
 
-            skipGraphServer.store(strHomeTargetHostIP+strPortNumber, strVisitingTargetHostIP+strPortNumber, byteVisitingTargetHostIP, byteVisitingESIP, byteHomeTargetHostIP);
+            JsonObject jobj = skipGraphServer.get(strHomeTargetHostIP);
+            skipGraphServer.store(strHomeTargetHostIP+strPortNumber, strVisitingTargetHostIP+strPortNumber, byteVisitingTargetHostIP, byteVisitingESIP, byteHomeTargetHostIP, jobj);
 
             byte[] sendBuf = new byte[48];
 
@@ -723,7 +730,9 @@ class DHTManagerHandler extends SimpleChannelInboundHandler<DatagramPacket> {
 
                 System.out.printf("[Node %d] Storing the pair: (Original Cnt IP=%s, New Ctn IP=%s, New Host IP=%s, New Edge Switch IP=%s)\n", nodeIndex, strHomeCTIP, strVisitingCTIP, strVisitingTargetHostIP, strVisitingESIP);
             }
-            skipGraphServer.store(strHomeCTIP, strVisitingCTIP, byteVisitingCTIP, byteVisitingESIP, byteVisitingTargetHostIP, byteHomeCTIP);
+
+            JsonObject jobj = skipGraphServer.get(strHomeCTIP);
+            skipGraphServer.store(strHomeCTIP, strVisitingCTIP, byteVisitingCTIP, byteVisitingESIP, byteVisitingTargetHostIP, byteHomeCTIP, jobj);
 
             byte[] sendBuf = new byte[48];
 
@@ -1075,50 +1084,40 @@ class DHTServer {
     public String buildJsonDHTEntry (JsonObject jobj) {
         String returnValue = null;
         String lEsIP = jobj.get(ES_IP+"").toString();
-        String lLocalityID = jobj.get(LOCALITY_ID+"").toString();
         String lVisitingIP = jobj.get(VISITING_IP+"").toString();
         String lHomeTargetHost = jobj.get(HOME_TARGET_HOST+"").toString();
         String lVisitingTargetHost = jobj.get(VISITING_TARGET_HOST+"").toString();
-        JsonArray jarray= jobj.get(LID_LIST+"").getAsJsonArray();
+
+        returnValue = "{";
+        if (lEsIP != null) {
+            returnValue = returnValue + "\"" + ES_IP + "\":\"" + lEsIP + "\",";
+        }
+        if (lVisitingIP != null) {
+            returnValue = returnValue + "\"" + VISITING_IP + "\":\"" + lVisitingIP + "\",";
+        }
+        if (lHomeTargetHost != null) {
+            returnValue = returnValue + "\"" + HOME_TARGET_HOST + "\":\"" + lHomeTargetHost + "\",";
+        }
+        if (lVisitingTargetHost != null) {
+            returnValue = returnValue + "\"" + VISITING_TARGET_HOST + "\":\"" + lVisitingTargetHost +"\",";
+        }
         if (localityID != null) {
-            boolean isLocalityIdSame = false;
-            if (jobj.get(LOCALITY_ID+"").toString().equals(localityID)) {
-                isLocalityIdSame = true;
+            String lLocalityID = jobj.get(LOCALITY_ID + "").toString();
+            if (lLocalityID != null) {
+                returnValue = returnValue + "\"" + LOCALITY_ID + "\":\"" + lLocalityID + "\",";
             }
-            for (int i = 0 ; i < jarray.size() ; i++) {
-                if (jarray.get(i).toString().equals(localityID)){
-                    isLocalityIdSame = true;
-                }
-            }
-            if (!isLocalityIdSame) {
-                jarray.add(localityID);
-                JsonObject newJobj = new JsonObject();
-                returnValue = "{";
-                if (lEsIP != null) {
-                    newJobj.add(ES_IP+"",lEsIP.);
-                }
-                if (lLocalityID != null) {
-
-                }
-                if (lVisitingIP != null) {
-
-                }
-                if (lHomeTargetHost != null) {
-
-                }
-                if (lVisitingTargetHost != null) {
-
-                }
-                if (returnValue.endsWith(",")) {
-                    returnValue = returnValue.substring(0, returnValue.length() - 1 ) + "}";
-                }
-                else {
-                    returnValue = returnValue + "}";
-                }
-                localityAwareNode.storeResourceByNameID(localityID, firstSHA, )
+            JsonArray jarray = jobj.getAsJsonArray(LID_LIST + "");
+            if (jarray != null) {
+                returnValue = returnValue + "\"" + LID_LIST + "\":" + extendLidList(jobj);
             }
         }
-        return null;
+        if (returnValue.endsWith(",")) {
+            returnValue = returnValue.substring(0, returnValue.length() - 1) + "}";
+        }
+        else {
+            returnValue = returnValue + "}";
+        }
+        return returnValue;
     }
 
     //TODO
@@ -1142,6 +1141,7 @@ class DHTServer {
 
             boolean isHit = false;
             String searchResult = null;
+            SkipNodeIdentity nodeIdentity = null;
             if (localityID != null && localityAwareNode != null) {
                 //Search entry with MOID on Edge's locality site
                 if(logging){
@@ -1149,8 +1149,8 @@ class DHTServer {
                     System.out.println("Locality ID: "+localityID);
                     System.out.println("Key: "+firstSHA);
                 }
-
-                String valueLA = localityAwareNode.getResourceByNameID(localityID, firstSHA);
+                nodeIdentity = localityAwareNode.getResourceByNameID(localityID, firstSHA);
+                String valueLA = nodeIdentity.getResourceQueryResult();
                 if (valueLA != null && !valueLA.equals("")) { //Hit
                     isHit = true;
                     searchResult = valueLA;
@@ -1161,14 +1161,17 @@ class DHTServer {
                 String[] ipSplit = input.split("\\.");
                 String nameId = "";
                 //ONLY USE THIRD IP FIELD 8 bits FOR Prefix
-                Integer item = Integer.parseInt(ipSplit[2]);
+                Integer item = Integer.parseInt(ipSplit[1]);
                 nameId = "1" + String.format("%8s", Integer.toBinaryString(item)).replaceAll(" ", "0").substring(1);
+                item = Integer.parseInt(ipSplit[2]);
+                nameId = nameId + String.format("%8s", Integer.toBinaryString(item)).replaceAll(" ", "0");
                 if(logging) {
                     System.out.println("IP address-aware approach searching");
                     System.out.println("IP based name ID: "+nameId);
                     System.out.println("Key: "+firstSHA);
                 }
-                String valueIA = ipAddressAwareNode.getResourceByNameID(nameId, firstSHA);
+                nodeIdentity = ipAddressAwareNode.getResourceByNameID(nameId, firstSHA);
+                String valueIA = nodeIdentity.getResourceQueryResult();
                 if (valueIA != null && !valueIA.equals("")) { //Hit
                     //Revise entry's locator from prior Edge to recent Edge
                     //GOTO (2)
@@ -1181,7 +1184,8 @@ class DHTServer {
                     System.out.println("Hash approach searching");
                     System.out.println("Key: "+firstSHA);
                 }
-                String valueHash = ipAddressAwareNode.getResourceByResourceKey(firstSHA);
+                nodeIdentity = ipAddressAwareNode.getResourceByResourceKey(firstSHA);
+                String valueHash = nodeIdentity.getResourceQueryResult();
                 if (valueHash != null && !valueHash.equals("")) { //Hit
                     isHit = true;
                     searchResult = valueHash;
@@ -1191,7 +1195,7 @@ class DHTServer {
                 if (searchResult != null) { //Hit
                     //TODO
                     //Jaehyun implements sending UDP packet to OVS
-                    if (logging) System.out.println("OpCode = OPCODE_GET_HASH, " + searchResult);
+                    if (logging) System.out.println("OpCode == OPCODE_GET_HASH, " + searchResult);
                     String foundData = searchResult;
                     JsonParser parser = new JsonParser();
                     JsonObject jobj = new JsonObject();
@@ -1231,8 +1235,10 @@ class DHTServer {
                         System.out.println();
                     }
 
-
-
+                    if (localityAwareNode != null) {
+                        localityAwareNode.storeResourceByNameID()
+                    }
+                    ipAddressAwareNode.storeResourceByNameID()
 
                     if (logFileOut) {
                         Date enddate = new Date();
@@ -1321,7 +1327,9 @@ class DHTServer {
 //                    //Update entry on this locality site
 //                    //Update entry on prior locality site
 //                }
+
             }
+
         } else if (opCode == OPCODE_GET_IP) {
             //In this case, input is an objectKey
             String firstSHA = input;
@@ -1355,7 +1363,7 @@ class DHTServer {
             }
             if (isHit) { //Locality-aware approach searching failed
                 //Jaehyun needs to implement sending UDP packet to OVS
-                if (logging) System.out.println("OpCode = OPCODE_GET_IP, " + searchResult);
+                if (logging) System.out.println("OpCode == OPCODE_GET_IP, " + searchResult);
                 String foundData = searchResult;
 
                 JsonObject jobj = new JsonObject();
@@ -1539,8 +1547,10 @@ class DHTServer {
                 String[] ipSplit = input.split("\\.");
                 String nameId = "";
                 //ONLY USE THIRD IP FIELD 8 bits FOR Prefix
-                Integer item = Integer.parseInt(ipSplit[2]);
+                Integer item = Integer.parseInt(ipSplit[1]);
                 nameId = "1" + String.format("%8s", Integer.toBinaryString(item)).replaceAll(" ", "0").substring(1);
+                item = Integer.parseInt(ipSplit[2]);
+                nameId = nameId + String.format("%8s", Integer.toBinaryString(item)).replaceAll(" ", "0");
                 if(logging) {
                     System.out.println("IP address-aware approach searching");
                     System.out.println("IP based name ID: "+nameId);
@@ -1570,7 +1580,7 @@ class DHTServer {
                 //Revise entry's locator from prior Edge to recent Edge
                 //Jaehyun implements sending UDP packet to OVS
                 if (logging)
-                    System.out.println("OpCode = OPCODE_GET_IPPORT, " + searchResult);
+                    System.out.println("OpCode == OPCODE_GET_IPPORT, " + searchResult);
                 String foundData = searchResult;
                 int nPort = Integer.parseInt(input.split(":")[1]);
                 String strPort = Integer.toHexString(nPort);
@@ -1759,8 +1769,7 @@ class DHTServer {
                 }
                 */
             //GOTO (4)
-
-            }
+        }
 
 //                } else { // !isLocalityIdSame
 //                    //(3) Keep prior locality ID and revise entry's locality ID
@@ -1794,8 +1803,96 @@ class DHTServer {
                 //old code ends
     }
 
+    public JsonObject get(String moidSource) throws NoSuchAlgorithmException{
+        //opCode == OPCODE_INFORM_CONNECTION or OPCODE_APP_MOBILITY or OPCODE_CTN_MOBILITY
+        String firstSHA = sha256(moidSource);
+        JsonArray jarray = null;
+        boolean isHit = false;
+        String searchResult = null;
+        if (localityID != null && localityAwareNode != null) {
+            //Search entry with MOID on Edge's locality site
+            if(logging){
+                System.out.println("Locality-aware approach searching");
+                System.out.println("Locality ID: "+localityID);
+                System.out.println("Key: "+firstSHA);
+            }
+            String valueLA = localityAwareNode.getResourceByNameID(localityID, firstSHA);
+            if (valueLA != null && !valueLA.equals("")) { //Hit
+                isHit = true;
+                searchResult = valueLA;
+            }
+        }
+        if (!isHit) { //Locality-aware approach searching failed
+            //Search entry with network address of IP address on IP address approach
+            String[] ipSplit = moidSource.split("\\.");
+
+            String nameId = "";
+            //ONLY USE THIRD IP FIELD 8 bits FOR Prefix
+            Integer item = Integer.parseInt(ipSplit[1]);
+            nameId = "1" + String.format("%8s", Integer.toBinaryString(item)).replaceAll(" ", "0").substring(1);
+            item = Integer.parseInt(ipSplit[2]);
+            nameId = nameId + String.format("%8s", Integer.toBinaryString(item)).replaceAll(" ", "0");
+            if(logging) {
+                System.out.println("IP address-aware approach searching");
+                System.out.println("IP based name ID: "+nameId);
+                System.out.println("Key: "+firstSHA);
+            }
+            String valueIA = ipAddressAwareNode.getResourceByNameID(nameId, firstSHA);
+            if (valueIA != null && !valueIA.equals("")) { //Hit
+                //Revise entry's locator from prior Edge to recent Edge
+                //GOTO (2)
+                isHit = true;
+                searchResult = valueIA;
+            }
+        }
+        if (!isHit) { //IP address-approach searching failed
+            if(logging) {
+                System.out.println("Hash approach searching");
+                System.out.println("Key: "+firstSHA);
+            }
+            String valueHash = ipAddressAwareNode.getResource(firstSHA);
+            if (valueHash != null && !valueHash.equals("")) { //Hit
+                isHit = true;
+                searchResult = valueHash;
+            }
+        }
+        if (isHit) {
+            //TODO
+            if (logging)
+                System.out.println("OpCode == OPCODE_INFORM_CONNECTION or OPCODE_APP_MOBILITY or OPCODE_CTN_MOBILITY, " + searchResult);
+            JsonParser jparser = new JsonParser();
+            JsonObject jobj = (JsonObject) jparser.parse(searchResult);
+            return jobj;
+        }
+        else { // Failed
+            return null;
+        }
+    }
+
+    public String extendLidList(JsonObject jobj) {
+        JsonArray jarray = jobj.getAsJsonArray(LID_LIST+"");
+        if (jarray != null) {
+            boolean isContainingSameLID = false;
+            for (int i = 0 ; i < jarray.size() ; i++){
+                if (jarray.get(i).equals(localityID)) {
+                    isContainingSameLID = true;
+                    break;
+                }
+            }
+            if (isContainingSameLID) {
+                return jarray.toString();
+            }
+            else {
+                jarray.add(localityID);
+                return jarray.toString();
+            }
+        }
+        else {
+            return "[]";
+        }
+    }
     //TODO
-    public void store(String strHostIP, byte[] hostIP, byte[] switchIP) throws IOException, NoSuchAlgorithmException {
+    public void store(String strHostIP, byte[] hostIP, byte[] switchIP, JsonObject jobj) throws IOException, NoSuchAlgorithmException {
         //opCode == OPCODE_INFORM_CONNECTION
 
         StringBuilder jsonString = new StringBuilder();
@@ -1815,10 +1912,9 @@ class DHTServer {
 
         jsonString.append("\""+LOCALITY_ID+"\" : \""+ localityID + "\",");
 
-        jsonString.append("\""+LID_LIST+"\" : []}");
+        jsonString.append("\""+LID_LIST+"\":"+extendLidList(jobj)+"}");
 
         //TODO LID_LISt
-
 
         String firstSHA = sha256(strHostIP);
 
@@ -1833,7 +1929,7 @@ class DHTServer {
         //peer.put(Number160.createHash(firstSHA)).setData(new Data(jsonString.toString())).start();
     }
 
-    public void store(String originalHostIPPort, String visitingTargetHostIPPort, byte[] visitingTargetHostIP, byte[] switchIP, byte[] homeTargetHostIP) throws IOException, NoSuchAlgorithmException {
+    public void store(String originalHostIPPort, String visitingTargetHostIPPort, byte[] visitingTargetHostIP, byte[] switchIP, byte[] homeTargetHostIP, JsonObject jobj) throws IOException, NoSuchAlgorithmException {
         //opCode == OPCODE_APP_MOBILITY
 
         StringBuilder jsonString = new StringBuilder();
@@ -1857,7 +1953,7 @@ class DHTServer {
 
         jsonString.append("\""+LOCALITY_ID+"\" : \""+ localityID + "\",");
 
-        jsonString.append("\""+LID_LIST+"\" : []}");
+        jsonString.append("\""+LID_LIST+"\":"+extendLidList(jobj)+"}");
 
 
         String firstSHA = sha256(originalHostIPPort);
@@ -1897,7 +1993,7 @@ class DHTServer {
         //jsonString2.setLength(0);
     }
 
-    public void store(String strHomeCTIP, String strSwitchedIP, byte[] visitingCtnIP, byte[] switchIP, byte[] visitingTargetHostIP, byte[] homeCtnIP) throws IOException, NoSuchAlgorithmException {
+    public void store(String strHomeCTIP, String strSwitchedIP, byte[] visitingCtnIP, byte[] switchIP, byte[] visitingTargetHostIP, byte[] homeCtnIP, JsonObject jobj) throws IOException, NoSuchAlgorithmException {
         //opCode == OPCODE_CTN_MOBILITY
 
         StringBuilder jsonString = new StringBuilder();
@@ -1924,7 +2020,7 @@ class DHTServer {
 
         jsonString.append("\""+LOCALITY_ID+"\" : \""+ localityID + "\",");
 
-        jsonString.append("\""+LID_LIST+"\" : []}");
+        jsonString.append("\""+LID_LIST+"\":"+extendLidList(jobj)+"}");
 
         String firstSHA = sha256(strHomeCTIP);
 

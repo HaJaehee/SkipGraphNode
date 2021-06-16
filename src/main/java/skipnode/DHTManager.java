@@ -66,6 +66,7 @@ package skipnode;
  */
 /* -------------------------------------------------------- */
 
+import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import io.netty.bootstrap.Bootstrap;
@@ -1180,6 +1181,14 @@ class DHTServer {
                         }
                         System.out.println();
                     }
+
+                    JsonArray jarray= jobj.get(LID_LIST+"").getAsJsonArray();
+                    if (localityID != null) {
+                        if (!jarray.contains(new JsonObject(localityID))) {
+
+                        }
+                    }
+
                     if (logFileOut) {
                         Date enddate = new Date();
                         long endtime = enddate.getTime();
@@ -1343,6 +1352,11 @@ class DHTServer {
                     }
                     System.out.println();
                 }
+
+                if (localityID != null) {
+
+                }
+
                 if (logFileOut) {
                     Date enddate = new Date();
                     long endtime = enddate.getTime();
@@ -1755,7 +1769,9 @@ class DHTServer {
 
         jsonString.append("\""+ES_IP+"\" : \""+ strData +"\", ");
 
-        jsonString.append("\""+LOCALITY_ID+"\" : \""+ localityID + "\"}");
+        jsonString.append("\""+LOCALITY_ID+"\" : \""+ localityID + "\",");
+
+        jsonString.append("\""+LID_LIST+"\" : []}");
 
         //TODO LID_LISt
 
@@ -1795,7 +1811,9 @@ class DHTServer {
             strData += String.format("%02x", homeTargetHostIP[i]);
         jsonString.append("\""+HOME_TARGET_HOST+"\" : \""+ strData +"\",");
 
-        jsonString.append("\""+LOCALITY_ID+"\" : \""+ localityID + "\"}");
+        jsonString.append("\""+LOCALITY_ID+"\" : \""+ localityID + "\",");
+
+        jsonString.append("\""+LID_LIST+"\" : []}");
 
 
         String firstSHA = sha256(originalHostIPPort);
@@ -1860,7 +1878,9 @@ class DHTServer {
             strData += String.format("%02x", visitingTargetHostIP[i]);
         jsonString.append("\""+VISITING_TARGET_HOST+"\" : \""+ strData +"\",");
 
-        jsonString.append("\""+LOCALITY_ID+"\" : \""+ localityID + "\"}");
+        jsonString.append("\""+LOCALITY_ID+"\" : \""+ localityID + "\",");
+
+        jsonString.append("\""+LID_LIST+"\" : []}");
 
         String firstSHA = sha256(strHomeCTIP);
 

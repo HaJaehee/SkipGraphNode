@@ -70,7 +70,6 @@ package skipnode;
 /* -------------------------------------------------------- */
 
 import com.google.gson.JsonArray;
-import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import io.netty.bootstrap.Bootstrap;
@@ -90,7 +89,6 @@ import java.io.*;
 import java.math.BigInteger;
 import java.net.*;
 import java.nio.ByteBuffer;
-import java.nio.file.LinkPermission;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.*;
@@ -1086,7 +1084,7 @@ class DHTServer {
         String lVisitingIP = jobj.get(VISITING_IP+"").toString();
         String lHomeTargetHost = jobj.get(HOME_TARGET_HOST+"").toString();
         String lVisitingTargetHost = jobj.get(VISITING_TARGET_HOST+"").toString();
-
+        String lLocalityID = jobj.get(LOCALITY_ID + "").toString();
         returnValue = "{";
         if (lEsIP != null) {
             returnValue = returnValue + "\"" + ES_IP + "\":\"" + lEsIP + "\",";
@@ -1100,14 +1098,19 @@ class DHTServer {
         if (lVisitingTargetHost != null) {
             returnValue = returnValue + "\"" + VISITING_TARGET_HOST + "\":\"" + lVisitingTargetHost +"\",";
         }
+        if (lLocalityID != null) {
+            returnValue = returnValue + "\"" + LOCALITY_ID + "\":\"" + lLocalityID + "\",";
+        }
         if (localityID != null) {
-            String lLocalityID = jobj.get(LOCALITY_ID + "").toString();
-            if (lLocalityID != null) {
-                returnValue = returnValue + "\"" + LOCALITY_ID + "\":\"" + lLocalityID + "\",";
-            }
             JsonArray jarray = jobj.getAsJsonArray(LID_LIST + "");
             if (jarray != null) {
                 returnValue = returnValue + "\"" + LID_LIST + "\":" + extendLidList(jobj);
+            }
+        }
+        else {
+            JsonArray jarray = jobj.getAsJsonArray(LID_LIST + "");
+            if (jarray != null) {
+                returnValue = returnValue + "\"" + LID_LIST + "\":" + jarray.toString();
             }
         }
         if (returnValue.endsWith(",")) {
@@ -1120,6 +1123,10 @@ class DHTServer {
     }
 
     //TODO
+    //Data Requester에서 동작하는 알고리즘
+    //LID_LIST update는 어떻게 수행해야 하는가?
+    //Data Owner에게 전달해야 하는가?
+    //Data Owner의 locality로 알려주면 되는가?
     public void get(final int opCode, final String input, final byte switchNum, final byte[] byteHostIP,
                     final byte[] hashedIP) throws ClassNotFoundException, IOException, NoSuchAlgorithmException {
 
@@ -1194,10 +1201,9 @@ class DHTServer {
                     if (logging) System.out.println("OpCode == OPCODE_GET_HASH, " + searchResult);
                     String foundData = searchResult;
                     JsonParser parser = new JsonParser();
-                    JsonObject jobj = new JsonObject();
-                    jobj = (JsonObject) parser.parse(foundData);
+                    JsonObject jobj = (JsonObject) parser.parse(foundData);
 
-                    String recvData = jobj.get(VISITING_IP + "").getAsString() + jobj.get(ES_IP + "").getAsString();
+                    String recvData = jobj.get(VISITING_IP + "").toString() + jobj.get(ES_IP + "").toString();
 
                     byte[] sendData = new byte[43];//Jaehee modified 160720
 
@@ -1229,6 +1235,13 @@ class DHTServer {
                             System.out.printf("%02x", sendData[6 + i]);
                         }
                         System.out.println();
+                    }
+
+                    String dataOwnerLocalityId = jobj.get(LOCALITY_ID+"").toString();
+                    if (dataOwnerLocalityId != null) {
+                        String revisedEntry = buildJsonDHTEntry(jobj);
+                        localityAwareNode.storeResourceByNameID(dataOwnerLocalityId, firstSHA, revisedEntry);
+                        localityAwareNode.storeResourceByNameID(localityID, firstSHA, revisedEntry);
                     }
 
                     if (logFileOut) {
@@ -1357,8 +1370,7 @@ class DHTServer {
                 if (logging) System.out.println("OpCode == OPCODE_GET_IP, " + searchResult);
                 String foundData = searchResult;
 
-                JsonObject jobj = new JsonObject();
-                jobj = (JsonObject) new JsonParser().parse(foundData);
+                JsonObject jobj = (JsonObject) new JsonParser().parse(foundData);
 
                 String recvData = jobj.get(VISITING_IP + "").getAsString() + jobj.get(ES_IP + "").getAsString();
 
@@ -1396,8 +1408,11 @@ class DHTServer {
                     System.out.println();
                 }
 
-                if (localityID != null) {
-
+                String dataOwnerLocalityId = jobj.get(LOCALITY_ID+"").toString();
+                if (dataOwnerLocalityId != null) {
+                    String revisedEntry = buildJsonDHTEntry(jobj);
+                    localityAwareNode.storeResourceByNameID(dataOwnerLocalityId, firstSHA, revisedEntry);
+                    localityAwareNode.storeResourceByNameID(localityID, firstSHA, revisedEntry);
                 }
 
                 if (logFileOut) {
@@ -1592,9 +1607,7 @@ class DHTServer {
                 }
 
                 JsonParser parser = new JsonParser();
-                JsonObject jobj = new JsonObject();
-
-                jobj = (JsonObject) parser.parse(foundData);
+                JsonObject jobj = (JsonObject) parser.parse(foundData);
                 String recvData = jobj.get(HOME_TARGET_HOST + "").getAsString() + jobj.get(ES_IP + "").getAsString() + jobj.get(VISITING_IP + "").getAsString() + strPort;
 
                 byte[] sendData = new byte[49];//Jaehee modified 160720
@@ -1636,6 +1649,14 @@ class DHTServer {
                     }
                     System.out.println();
                 }
+
+                String dataOwnerLocalityId = jobj.get(LOCALITY_ID+"").toString();
+                if (dataOwnerLocalityId != null) {
+                    String revisedEntry = buildJsonDHTEntry(jobj);
+                    localityAwareNode.storeResourceByNameID(dataOwnerLocalityId, firstSHA, revisedEntry);
+                    localityAwareNode.storeResourceByNameID(localityID, firstSHA, revisedEntry);
+                }
+
                 if (logFileOut) {
                     Date enddate = new Date();
                     long endtime = enddate.getTime();
@@ -1794,6 +1815,8 @@ class DHTServer {
                 //old code ends
     }
 
+    //TODO
+    //Data Owner에서 동작하는 알고리즘
     public JsonObject get(String moidSource) throws NoSuchAlgorithmException{
         //opCode == OPCODE_INFORM_CONNECTION or OPCODE_APP_MOBILITY or OPCODE_CTN_MOBILITY
         String firstSHA = sha256(moidSource);
@@ -1882,7 +1905,9 @@ class DHTServer {
             return "[]";
         }
     }
+
     //TODO
+    //Data Owner에서 동작하는 알고리즘
     public void store(String strHostIP, byte[] hostIP, byte[] switchIP, JsonObject jobj) throws IOException, NoSuchAlgorithmException {
         //opCode == OPCODE_INFORM_CONNECTION
 

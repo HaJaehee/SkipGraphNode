@@ -830,7 +830,7 @@ public class SkipNode implements SkipNodeInterface {
             jedis.close();
         }
         else if (isSettingResource && resourceKey != null && resourceValue != null && isUsingRedis) {
-            for (SkipNodeIdentity i : lookupTable.getNodeListAtHighestLevel()) {
+            for (SkipNodeIdentity i : lookupTable.getNodeListAtHighestLevel()) { // replication
                 if (i.getNumID().compareTo(this.numID) == 0) {
                     SkipNodeIdentity response = storeResource(resourceKey, resourceValue);
                     //TODO response is not used in this version.
@@ -847,7 +847,7 @@ public class SkipNode implements SkipNodeInterface {
             logger.debug("Resource query result = "+returnResourceQueryResult);
         }
         else if (isSettingResource && resourceKey != null && resourceValue != null && !isUsingRedis && kvMap != null) {
-            for (SkipNodeIdentity i : lookupTable.getNodeListAtHighestLevel()) {
+            for (SkipNodeIdentity i : lookupTable.getNodeListAtHighestLevel()) { // replication
                 if (i.getNumID().compareTo(this.numID) == 0) {
                     SkipNodeIdentity response = storeResource(resourceKey, resourceValue);
                     //TODO response is not used in this version.

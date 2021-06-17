@@ -70,6 +70,7 @@ package skipnode;
 /* -------------------------------------------------------- */
 
 import com.google.gson.JsonArray;
+import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import io.netty.bootstrap.Bootstrap;
@@ -111,7 +112,7 @@ public final class DHTManager {
     public  DHTServer skipGraphServer = null;
     public  boolean logging = false;
     public  boolean logFileOut = false;
-    public  boolean onEmulator = true;
+    public  boolean onEmulator = false;
     public  String[] input = null;
     //public static int skipGraphServerPort = 8468;
     public  int ovsPort = 9999;
@@ -153,7 +154,7 @@ public final class DHTManager {
             }
         }
 
-        ip = "172.30.1.52";
+        ip = "172.30.1.24";
 
 
         kvMap = new HashMap<String, String>();
@@ -1031,7 +1032,7 @@ class DHTServer {
         //Supposed to randomly generated.
         int item = (100*edgeNum)+dhtNum;
 
-        nameId = nameId + "000" + String.format("%16s", Integer.toBinaryString(item)).replaceAll(" ", "0");
+        nameId = nameId + String.format("%16s", Integer.toBinaryString(item)).replaceAll(" ", "0");
         //Length of nameID is finally 32.
         System.out.println("LA name ID: " + nameId + " len: " + nameId.length());
 
@@ -1080,26 +1081,26 @@ class DHTServer {
 
     public String buildJsonDHTEntry (JsonObject jobj) {
         String returnValue = null;
-        String lEsIP = jobj.get(ES_IP+"").toString();
-        String lVisitingIP = jobj.get(VISITING_IP+"").toString();
-        String lHomeTargetHost = jobj.get(HOME_TARGET_HOST+"").toString();
-        String lVisitingTargetHost = jobj.get(VISITING_TARGET_HOST+"").toString();
-        String lLocalityID = jobj.get(LOCALITY_ID + "").toString();
+        JsonElement lEsIP = jobj.get(ES_IP+"");
+        JsonElement lVisitingIP = jobj.get(VISITING_IP+"");
+        JsonElement lHomeTargetHost = jobj.get(HOME_TARGET_HOST+"");
+        JsonElement lVisitingTargetHost = jobj.get(VISITING_TARGET_HOST+"");
+        JsonElement lLocalityID = jobj.get(LOCALITY_ID + "");
         returnValue = "{";
         if (lEsIP != null) {
-            returnValue = returnValue + "\"" + ES_IP + "\":\"" + lEsIP + "\",";
+            returnValue = returnValue + "\"" + ES_IP + "\":\"" + lEsIP.getAsString() + "\",";
         }
         if (lVisitingIP != null) {
-            returnValue = returnValue + "\"" + VISITING_IP + "\":\"" + lVisitingIP + "\",";
+            returnValue = returnValue + "\"" + VISITING_IP + "\":\"" + lVisitingIP.getAsString() + "\",";
         }
         if (lHomeTargetHost != null) {
-            returnValue = returnValue + "\"" + HOME_TARGET_HOST + "\":\"" + lHomeTargetHost + "\",";
+            returnValue = returnValue + "\"" + HOME_TARGET_HOST + "\":\"" + lHomeTargetHost.getAsString() + "\",";
         }
         if (lVisitingTargetHost != null) {
-            returnValue = returnValue + "\"" + VISITING_TARGET_HOST + "\":\"" + lVisitingTargetHost +"\",";
+            returnValue = returnValue + "\"" + VISITING_TARGET_HOST + "\":\"" + lVisitingTargetHost.getAsString() +"\",";
         }
         if (lLocalityID != null) {
-            returnValue = returnValue + "\"" + LOCALITY_ID + "\":\"" + lLocalityID + "\",";
+            returnValue = returnValue + "\"" + LOCALITY_ID + "\":\"" + lLocalityID.getAsString() + "\",";
         }
         if (localityID != null) {
             JsonArray jarray = jobj.getAsJsonArray(LID_LIST + "");
@@ -1120,6 +1121,23 @@ class DHTServer {
             returnValue = returnValue + "}";
         }
         return returnValue;
+    }
+
+    public void replicateData(JsonObject jobj, String firstSHA) {
+        String dataOwnerLocalityId = jobj.get(LOCALITY_ID+"").toString();
+        if (localityAwareNode != null && dataOwnerLocalityId != null) {
+            String revisedEntry = buildJsonDHTEntry(jobj);
+            localityAwareNode.storeResourceByNameID(dataOwnerLocalityId, firstSHA, revisedEntry);
+            localityAwareNode.storeResourceByNameID(localityID, firstSHA, revisedEntry);
+            JsonArray jarray = jobj.getAsJsonArray(LID_LIST+"");
+            if (jarray != null) {
+                for (int i = 0 ; i < jarray.size() ; i++){
+                    if (!jarray.get(i).getAsString().equals(localityID)) {
+                        localityAwareNode.storeResourceByNameID(jarray.get(i).toString(), firstSHA, revisedEntry);
+                    }
+                }
+            }
+        }
     }
 
     //TODO
@@ -1203,7 +1221,7 @@ class DHTServer {
                     JsonParser parser = new JsonParser();
                     JsonObject jobj = (JsonObject) parser.parse(foundData);
 
-                    String recvData = jobj.get(VISITING_IP + "").toString() + jobj.get(ES_IP + "").toString();
+                    String recvData = jobj.get(VISITING_IP + "").getAsString() + jobj.get(ES_IP + "").getAsString();
 
                     byte[] sendData = new byte[43];//Jaehee modified 160720
 
@@ -1237,12 +1255,7 @@ class DHTServer {
                         System.out.println();
                     }
 
-                    String dataOwnerLocalityId = jobj.get(LOCALITY_ID+"").toString();
-                    if (dataOwnerLocalityId != null) {
-                        String revisedEntry = buildJsonDHTEntry(jobj);
-                        localityAwareNode.storeResourceByNameID(dataOwnerLocalityId, firstSHA, revisedEntry);
-                        localityAwareNode.storeResourceByNameID(localityID, firstSHA, revisedEntry);
-                    }
+                    replicateData(jobj, firstSHA);
 
                     if (logFileOut) {
                         Date enddate = new Date();
@@ -1408,12 +1421,7 @@ class DHTServer {
                     System.out.println();
                 }
 
-                String dataOwnerLocalityId = jobj.get(LOCALITY_ID+"").toString();
-                if (dataOwnerLocalityId != null) {
-                    String revisedEntry = buildJsonDHTEntry(jobj);
-                    localityAwareNode.storeResourceByNameID(dataOwnerLocalityId, firstSHA, revisedEntry);
-                    localityAwareNode.storeResourceByNameID(localityID, firstSHA, revisedEntry);
-                }
+                replicateData(jobj, firstSHA);
 
                 if (logFileOut) {
                     Date enddate = new Date();
@@ -1650,12 +1658,7 @@ class DHTServer {
                     System.out.println();
                 }
 
-                String dataOwnerLocalityId = jobj.get(LOCALITY_ID+"").toString();
-                if (dataOwnerLocalityId != null) {
-                    String revisedEntry = buildJsonDHTEntry(jobj);
-                    localityAwareNode.storeResourceByNameID(dataOwnerLocalityId, firstSHA, revisedEntry);
-                    localityAwareNode.storeResourceByNameID(localityID, firstSHA, revisedEntry);
-                }
+                replicateData(jobj, firstSHA);
 
                 if (logFileOut) {
                     Date enddate = new Date();
@@ -1888,7 +1891,7 @@ class DHTServer {
         if (jarray != null) {
             boolean isContainingSameLID = false;
             for (int i = 0 ; i < jarray.size() ; i++){
-                if (jarray.get(i).equals(localityID)) {
+                if (jarray.get(i).getAsString().equals(localityID)) {
                     isContainingSameLID = true;
                     break;
                 }
@@ -1902,7 +1905,7 @@ class DHTServer {
             }
         }
         else {
-            return "[]";
+            return "[\""+localityID+"\"]";
         }
     }
 
@@ -1928,7 +1931,12 @@ class DHTServer {
 
         jsonString.append("\""+LOCALITY_ID+"\" : \""+ localityID + "\",");
 
-        jsonString.append("\""+LID_LIST+"\":"+extendLidList(jobj)+"}");
+        if (jobj != null) {
+            jsonString.append("\""+LID_LIST+"\":"+extendLidList(jobj)+"}");
+        }
+        else {
+            jsonString.append("\""+LID_LIST+"\":[\""+localityID+"\"]}");
+        }
 
         //TODO LID_LISt
 
@@ -1969,7 +1977,12 @@ class DHTServer {
 
         jsonString.append("\""+LOCALITY_ID+"\" : \""+ localityID + "\",");
 
-        jsonString.append("\""+LID_LIST+"\":"+extendLidList(jobj)+"}");
+        if (jobj != null) {
+            jsonString.append("\""+LID_LIST+"\":"+extendLidList(jobj)+"}");
+        }
+        else {
+            jsonString.append("\""+LID_LIST+"\":[\""+localityID+"\"]}");
+        }
 
 
         String firstSHA = sha256(originalHostIPPort);
@@ -2036,7 +2049,12 @@ class DHTServer {
 
         jsonString.append("\""+LOCALITY_ID+"\" : \""+ localityID + "\",");
 
-        jsonString.append("\""+LID_LIST+"\":"+extendLidList(jobj)+"}");
+        if (jobj != null) {
+            jsonString.append("\""+LID_LIST+"\":"+extendLidList(jobj)+"}");
+        }
+        else {
+            jsonString.append("\""+LID_LIST+"\":[\""+localityID+"\"]}");
+        }
 
         String firstSHA = sha256(strHomeCTIP);
 
@@ -2109,7 +2127,6 @@ class DHTServer {
 			FutureDHT futureDHT = peer.get(Number160.createHash(firstSHA)).start();
 			futureDHT.addListener(new BaseFutureAdapter<FutureDHT>() {
 				private byte lSwitchNum = switchNum;
-				private byte[] lbyte_host_ip = byte_host_ip.clone();
 				private byte[] lHashedIP = hashedIP.clone();
 				@Override
 				public void operationComplete(FutureDHT future)

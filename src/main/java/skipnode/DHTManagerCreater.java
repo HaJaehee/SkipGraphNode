@@ -16,14 +16,19 @@ public class DHTManagerCreater {
     private static final int MAX_DHT_MNG_COUNT = 10;
     private static ArrayList<DHTManagerThread> dhtMngThrLst = null;
     private static boolean logging = false;
-    DHTManagerCreater () {
 
+    private static final int MAX_LEVEL = 16;
+    DHTManagerCreater () {
     }
 
     public static void main(String[] args) {
         if (args.length == 5 || (args.length == 6 && args[5].equals("logging"))) {
             if (args[5].equals("logging")) {
                 logging = true;
+            }
+            if (args[1].length() != MAX_LEVEL && !args[1].equals("none")) {
+                System.out.println("Locality ID length must be 16 or 'none'.");
+                System.exit(0);
             }
             dhtMngThrLst = new ArrayList<DHTManagerThread>();
             if (MAX_DHT_MNG_COUNT > 0) {

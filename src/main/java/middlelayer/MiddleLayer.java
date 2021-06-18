@@ -19,11 +19,14 @@ package middlelayer;
 
 import lookup.LookupTable;
 import lookup.TentativeTable;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import skipnode.SearchResult;
 import skipnode.SkipNodeIdentity;
 import skipnode.SkipNodeInterface;
 import underlay.Underlay;
-import underlay.packets.*;
+import underlay.packets.Request;
+import underlay.packets.Response;
 import underlay.packets.requests.*;
 import underlay.packets.responses.*;
 
@@ -41,6 +44,7 @@ public class MiddleLayer {
 
     private final Underlay underlay;
     private final SkipNodeInterface overlay;
+    private static final Logger logger = LoggerFactory.getLogger(MiddleLayer.class);
 
     public MiddleLayer(Underlay underlay, SkipNodeInterface overlay) {
         this.underlay = underlay;
@@ -161,10 +165,12 @@ public class MiddleLayer {
                 return new IdentityResponse(identity);
             case FindLadder:
                 // Can only be invoked when unlocked or by the lock owner.
+                //210618
+                logger.debug("Overlay is locked by someone.");
+                logger.debug("Requester address: " + request.senderAddress + ", port: " + request.senderPort);
                 if(overlay.isLocked() && !overlay.isLockedBy(request.senderAddress, request.senderPort)) {
                     //210610
-//                    System.out.println("overlay is locked by someone else");
-//                    System.out.println("Requester address: " + request.senderAddress + " port: " + request.senderPort);
+                    logger.debug("Do not find ladder.");
                     return new Response(true);
                 }
                 identity = overlay.findLadder(((FindLadderRequest) request).level, ((FindLadderRequest) request).direction,

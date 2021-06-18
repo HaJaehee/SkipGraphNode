@@ -337,7 +337,7 @@ public class SkipNode implements SkipNodeInterface {
             return false;
         }
         logger.debug(getNumID().toString(16) + " is being locked by " + requester.getNumID().toString(16) + " with provided version " + version);
-        logger.debug("Address: "+requester.getAddress() + " Port: " + requester.getPort());
+        logger.debug("Requester address: "+requester.getAddress() + ", port: " + requester.getPort());
         return true;
     }
 

@@ -154,7 +154,7 @@ public final class DHTManager {
             }
         }
 
-        ip = "172.30.1.24";
+        ip = "192.168.0.4";
 
 
         kvMap = new HashMap<String, String>();

@@ -54,6 +54,14 @@ package skipnode;
  Simple 80 virtual node test is passed.
  Modifier : Jaehee ha (jaehee.ha@kaist.ac.kr)
 
+ Rev. history : 2021-06-19
+ Version : 1.1.7
+ Every node MUST be specified by port number. Not Address and port.
+ Added DHTManager initialization lock.
+
+ Modifier : Jaehee ha (jaehee.ha@kaist.ac.kr)
+
+
  TODO
  store(put), get(search),
  More sophisticated implementation of get()
@@ -127,16 +135,23 @@ public final class DHTManager {
 
     private String[] args = null;
 
+    private volatile boolean serverInitiationLock = false;
+
+
     public DHTManager (String[] args){
         this.args = args;
+        serverInitiationLock = true;
     }
 
     public boolean isLogging() {
         return logging;
     }
+
+    public boolean isLocked() { return serverInitiationLock; }
     public void run() throws Exception {
 
         //input = new String[] {"0"}; // For test
+
 
         String interfaceName = "eth0";
         NetworkInterface networkInterface = NetworkInterface.getByName(interfaceName);
@@ -154,7 +169,7 @@ public final class DHTManager {
             }
         }
 
-        ip = "192.168.0.4";
+        ip = "192.168.1.95";
 
 
         kvMap = new HashMap<String, String>();
@@ -297,6 +312,7 @@ public final class DHTManager {
             b.group(group)
                     .channel(NioDatagramChannel.class)
                     .handler(new DHTManagerHandler(nodeIndex, justReset, logging, swIPAddrList, edgeSWList, swCount, PORT, bClient, skipGraphServer));
+            serverInitiationLock = false;
             b.bind(PORT).sync().channel().closeFuture().await();
         }
         catch (Exception e) {
@@ -305,6 +321,8 @@ public final class DHTManager {
         finally{
             group.shutdownGracefully();
         }
+
+
     }
 }
 
@@ -927,6 +945,7 @@ class DHTServer {
     private final int dhtNum;
     private final Bootstrap bClient;
     private final int ovsPort = 9999;
+
 
     public DHTServer(String ip, int portNumber, String localityID, HashMap kvMap, boolean logging, boolean logFileOut,
                      int edgeNum, int dhtNum, Bootstrap bClient) throws Exception {

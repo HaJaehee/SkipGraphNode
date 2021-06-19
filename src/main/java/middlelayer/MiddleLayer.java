@@ -129,37 +129,37 @@ public class MiddleLayer {
                 return new BooleanResponse(overlay.unlock(((ReleaseLockRequest) request).owner));
             case UpdateLeftNode:
                 // Can only be invoked when unlocked or by the lock owner.
-                if(overlay.isLocked() && !overlay.isLockedBy(request.senderAddress, request.senderPort))
+                if(overlay.isLocked() && !overlay.isLockedBy(request.senderPort))//!overlay.isLockedBy(request.senderAddress, request.senderPort)){
                     return new Response(true);
                 identity = overlay.updateLeftNode(((UpdateLeftNodeRequest) request).snId, ((UpdateLeftNodeRequest) request).level);
                 return new IdentityResponse(identity);
             case UpdateRightNode:
                 // Can only be invoked when unlocked or by the lock owner.
-                if(overlay.isLocked() && !overlay.isLockedBy(request.senderAddress, request.senderPort))
+                if(overlay.isLocked() && !overlay.isLockedBy(request.senderPort))//!overlay.isLockedBy(request.senderAddress, request.senderPort)){
                     return new Response(true);
                 identity = overlay.updateRightNode(((UpdateRightNodeRequest) request).snId, ((UpdateRightNodeRequest) request).level);
                 return new IdentityResponse(identity);
             case GetRightNode:
                 // Can only be invoked when unlocked or by the lock owner.
-                if(overlay.isLocked() && !overlay.isLockedBy(request.senderAddress, request.senderPort))
+                if(overlay.isLocked() && !overlay.isLockedBy(request.senderPort))//!overlay.isLockedBy(request.senderAddress, request.senderPort)){
                     return new Response(true);
                 identity = overlay.getRightNode(((GetRightNodeRequest) request).level);
                 return new IdentityResponse(identity);
             case GetLeftNode:
                 // Can only be invoked when unlocked or by the lock owner.
-                if(overlay.isLocked() && !overlay.isLockedBy(request.senderAddress, request.senderPort))
+                if(overlay.isLocked() && !overlay.isLockedBy(request.senderPort))//!overlay.isLockedBy(request.senderAddress, request.senderPort)){
                     return new Response(true);
                 identity = overlay.getLeftNode(((GetLeftNodeRequest) request).level);
                 return new IdentityResponse(identity);
             case GetRightNodeAndAddNodeAtHighestLevel:
                 // Can only be invoked when unlocked or by the lock owner.
-                if(overlay.isLocked() && !overlay.isLockedBy(request.senderAddress, request.senderPort))
+                if(overlay.isLocked() && !overlay.isLockedBy(request.senderPort))//request.senderAddress, request.senderPort))
                     return new Response(true);
                 identity = overlay.getRightNodeAndAddNodeAtHighestLevel(((GetRightNodeAndAddNodeAtHighestLevelRequest) request).level, ((GetRightNodeAndAddNodeAtHighestLevelRequest) request).snId);
                 return new IdentityResponse(identity);
             case GetLeftNodeAndAddNodeAtHighestLevel:
                 // Can only be invoked when unlocked or by the lock owner.
-                if(overlay.isLocked() && !overlay.isLockedBy(request.senderAddress, request.senderPort))
+                if(overlay.isLocked() && !overlay.isLockedBy(request.senderPort))//request.senderAddress, request.senderPort))
                     return new Response(true);
                 identity = overlay.getLeftNodeAndAddNodeAtHighestLevel(((GetLeftNodeAndAddNodeAtHighestLevelRequest) request).level, ((GetLeftNodeAndAddNodeAtHighestLevelRequest) request).snId);
                 return new IdentityResponse(identity);
@@ -168,7 +168,7 @@ public class MiddleLayer {
                 //210618
                 logger.debug("Overlay is locked by someone.");
                 logger.debug("Requester address: " + request.senderAddress + ", port: " + request.senderPort);
-                if(overlay.isLocked() && !overlay.isLockedBy(request.senderAddress, request.senderPort)) {
+                if(overlay.isLocked() && !overlay.isLockedBy(request.senderPort)){//request.senderAddress, request.senderPort)) {
                     //210610
                     logger.debug("Do not find ladder.");
                     return new Response(true);

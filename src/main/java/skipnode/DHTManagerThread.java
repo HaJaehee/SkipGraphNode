@@ -24,4 +24,5 @@ public class DHTManagerThread extends Thread {
             e.printStackTrace();
         }
     }
+    public DHTManager getDhtManager (){ return  dhtManager; }
 }

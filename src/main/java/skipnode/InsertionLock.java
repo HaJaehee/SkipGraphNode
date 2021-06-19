@@ -47,6 +47,12 @@ public class InsertionLock {
         return isLocked() && owner != null && owner.getAddress().equals(address) && owner.getPort() == port;
     }
 
+    public boolean isLockedBy(int port) {
+        //210618
+        logger.debug("Already locked by owner port: "+owner.getPort());
+        return isLocked() && owner != null && owner.getPort() == port;
+    }
+
     public boolean unlockOwned(SkipNodeIdentity owner) {
         if(!this.owner.equals(owner)) return false;
         this.owner = null;

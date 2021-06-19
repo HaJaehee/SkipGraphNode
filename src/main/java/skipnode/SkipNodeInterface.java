@@ -18,6 +18,11 @@ package skipnode;
  Version : 1.0.3
  Added getNodeListAtHighestLevel(), getFirstNodeAtHighestLevel(), and getNodeListByNameID().
  Modifier : Jaehee ha (jaehee.ha@kaist.ac.kr)
+
+ Rev. history : 2021-06-19
+ Version : 1.1.7
+ Added isLockedBy(int port).
+ Modifier : Jaehee ha (jaehee.ha@kaist.ac.kr)
  */
 /* -------------------------------------------------------- */
 
@@ -262,9 +267,16 @@ public interface SkipNodeInterface {
      *
      * @param address
      * @param port
-     * @return
+     * @return boolean
      */
     boolean isLockedBy(String address, int port);
+
+    /**
+     *
+     * @param port
+     * @return boolean
+     */
+    boolean isLockedBy(int port);
 
     /*
     Test

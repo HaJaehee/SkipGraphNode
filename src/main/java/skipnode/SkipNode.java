@@ -663,6 +663,9 @@ public class SkipNode implements SkipNodeInterface {
         return insertionLock.isLockedBy(address, port);
     }
 
+    @Override
+    public boolean isLockedBy(int port) {return  insertionLock.isLockedBy(port); }
+
     /**
      * Get a node list in which nodes have longest common prefix at the highest level.
      * @param targetNameID

@@ -32,6 +32,7 @@ public class DHTManagerCreater {
             }
             dhtMngThrLst = new ArrayList<DHTManagerThread>();
             if (MAX_DHT_MNG_COUNT > 0) {
+                DHTManagerThread dhtManager = null;
                 if (args[0].equals("0")) { // INITIAL_NODE = true;
                     String[] args2;
                     if (args.length == 5) { // w/o "logging"
@@ -44,18 +45,21 @@ public class DHTManagerCreater {
                     args2[0] = args[0];
                     args2[1] = args[1];
                     args2[2] = args[2];
-                    DHTManagerThread dhtManager = new DHTManagerThread(args2);
+                    dhtManager = new DHTManagerThread(args2);
                     dhtManager.start();
                     if (logging)System.out.println("First DHT manager thread #0 is started.");
                     dhtMngThrLst.add(dhtManager);
                 } else { // INITIAL_NODE = false;
-                    DHTManagerThread dhtManager = new DHTManagerThread(args);
+                    dhtManager = new DHTManagerThread(args);
                     dhtManager.start();
                     if (logging)System.out.println("First DHT manager thread #0 is started.");
                     dhtMngThrLst.add(dhtManager);
                 }
                 try {
                     Thread.sleep(2000);
+                    while (dhtManager != null && dhtManager.getDhtManager().isLocked()) {
+                        Thread.sleep(1000);
+                    }
                 } catch (InterruptedException e) {
                     e.printStackTrace();
                 }
@@ -70,7 +74,10 @@ public class DHTManagerCreater {
                     dhtMngThrLst.add(dhtManager);
                     dhtNum++;
                     try {
-                        Thread.sleep(2000);
+                        Thread.sleep(1000);
+                        while (dhtManager.getDhtManager().isLocked()) {
+                            Thread.sleep(1000);
+                        }
                     } catch (InterruptedException e) {
                         e.printStackTrace();
                     }

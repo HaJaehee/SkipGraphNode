@@ -1192,7 +1192,8 @@ class DHTServer {
                     System.out.println("Locality ID: "+localityID);
                     System.out.println("Key: "+firstSHA);
                 }
-                String valueLA = localityAwareNode.getResourceByNameID(localityID, firstSHA);
+                String valueLA = localityAwareNode.getResource(firstSHA);
+                        //localityAwareNode.getResourceByNameID(localityID, firstSHA);
                 if (valueLA != null && !valueLA.equals("")) { //Hit
                     isHit = true;
                     searchResult = valueLA;
@@ -1379,7 +1380,8 @@ class DHTServer {
                     System.out.println("Locality ID: "+localityID);
                     System.out.println("Key: "+firstSHA);
                 }
-                String valueLA = localityAwareNode.getResourceByNameID(localityID, firstSHA);
+                String valueLA = localityAwareNode.getResource(firstSHA);
+                        //localityAwareNode.getResourceByNameID(localityID, firstSHA);
                 if (valueLA != null && !valueLA.equals("")) { //Hit
                     isHit = true;
                     searchResult = valueLA;
@@ -1569,7 +1571,8 @@ class DHTServer {
                     System.out.println("Locality ID: "+localityID);
                     System.out.println("Key: "+firstSHA);
                 }
-                String valueLA = localityAwareNode.getResourceByNameID(localityID, firstSHA);
+                String valueLA = localityAwareNode.getResource(firstSHA);
+                        //localityAwareNode.getResourceByNameID(localityID, firstSHA);
                 if (valueLA != null && !valueLA.equals("")) { //Hit
                     isHit = true;
                     searchResult = valueLA;
@@ -1852,7 +1855,8 @@ class DHTServer {
                 System.out.println("Locality ID: "+localityID);
                 System.out.println("Key: "+firstSHA);
             }
-            String valueLA = localityAwareNode.getResourceByNameID(localityID, firstSHA);
+            String valueLA = localityAwareNode.getResource(firstSHA);
+                //localityAwareNode.getResourceByNameID(localityID, firstSHA);
             if (valueLA != null && !valueLA.equals("")) { //Hit
                 isHit = true;
                 searchResult = valueLA;

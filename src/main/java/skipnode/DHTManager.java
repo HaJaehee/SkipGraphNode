@@ -58,9 +58,13 @@ package skipnode;
  Version : 1.1.7
  Every node MUST be specified by port number. Not Address and port.
  Added DHTManager initialization lock.
-
  Modifier : Jaehee ha (jaehee.ha@kaist.ac.kr)
 
+ Rev. history : 2021-07-01
+ Version : 1.2.0
+ Separated IP address aware DHT network and locality aware DHT network.
+ Implemented recursively search algorithm by shortening tails of locality ID prefix.
+ Modifier : Jaehee ha (jaehee.ha@kaist.ac.kr)
 
  TODO
  store(put), get(search),
@@ -169,7 +173,7 @@ public final class DHTManager {
             }
         }
 
-        ip = "192.168.1.95";
+        ip = "192.168.0.4";
 
 
         kvMap = new HashMap<String, String>();
@@ -907,7 +911,8 @@ class ClientHandler extends SimpleChannelInboundHandler<DatagramPacket> {
 }
 
 class DHTServer {
-    private static int LEVEL = 16;
+    private static final int LOCALITY_AWARE_LEVEL = 8;
+    private static final int NETWORK_ADDRESS_LEVEL = 16;
 
     private final SkipNode ipAddressAwareNode;
     private final SkipNode localityAwareNode;
@@ -958,8 +963,7 @@ class DHTServer {
         this.ipAddressAwareNode = createIPAddressAwareNode(ip, portNumber, kvMap);
         if (localityID != null) {
             this.localityID = localityID;
-            //Insert this node into DHT network by being introduced by IP address approach node.
-            this.localityAwareNode = createLocalityAwareNode(ip, portNumber, ip, portNumber, localityID, kvMap);
+            this.localityAwareNode = createLocalityAwareNode(ip, portNumber, localityID, kvMap);
         }
         else {
             this.localityID = null;
@@ -976,10 +980,11 @@ class DHTServer {
         this.dhtNum = dhtNum;
         this.bClient = bClient;
         this.logFileOut = logFileOut;
-
+        //Insert this node into DHT network by being introduced by IP address approach node.
         this.ipAddressAwareNode = createIPAddressAwareNode(introducerIP, introducerPortNumber, ip, portNumber, kvMap);
         if (localityID != null) {
             this.localityID = localityID;
+            //Insert this node into DHT network by being introduced by IP address approach node.
             this.localityAwareNode = createLocalityAwareNode(introducerIP, introducerPortNumber, ip, portNumber, localityID, kvMap);
         }
         else {
@@ -997,7 +1002,7 @@ class DHTServer {
     //DUPLICATION CHECK
     public SkipNode createIPAddressAwareNode (String introducerIP, int introducerPortNumber, String ip, int portNumber, HashMap kvMap) {
         LookupTableFactory factory = new LookupTableFactory();
-        ConcurrentLookupTable table = (ConcurrentLookupTable) factory.createDefaultLookupTable(LEVEL);
+        ConcurrentLookupTable table = (ConcurrentLookupTable) factory.createDefaultLookupTable(NETWORK_ADDRESS_LEVEL);
 
         BigInteger numId = null;
         try {
@@ -1007,17 +1012,18 @@ class DHTServer {
         }
         String[] ipSplit = ip.split("\\.");
         String nameId = "";
-        //ONLY USE THIRD IP FIELD 8 bits FOR Prefix
+        //USE SECOND IP FIELD 8 bits FOR Prefix
         Integer item = Integer.parseInt(ipSplit[2]);
-        nameId = "1" + String.format("%8s", Integer.toBinaryString(item)).replaceAll(" ", "0").substring(1);
+        nameId = String.format("%8s", Integer.toBinaryString(item)).replaceAll(" ", "0");
 
-        //name ID body
+        //USE THIRD IP FIELD 8 bits FOR Prefix
         item = Integer.parseInt(ipSplit[3]);
         nameId = nameId + String.format("%8s", Integer.toBinaryString(item)).replaceAll(" ", "0");
 
         //Supposed to randomly generated.
         item = (100*edgeNum)+dhtNum;
-        nameId = nameId + String.format("%16s", Integer.toBinaryString(item)).replaceAll(" ", "0");
+        int idLength = 32 - nameId.length();
+        nameId = nameId + String.format("%"+idLength+"s", Integer.toBinaryString(item)).replaceAll(" ", "0");
         //Length of nameID is finally 32.
 
         System.out.println("IA name ID: " + nameId + " len: " + nameId.length());
@@ -1033,6 +1039,9 @@ class DHTServer {
         ipAddressAwareNode.setMiddleLayer(middleLayer);
         underlay.setMiddleLayer(middleLayer);
 
+        if(logging){
+            System.out.println("introducer IP: " + introducerIP + " introducer port: " + introducerPortNumber);
+        }
         ipAddressAwareNode.insert(introducerIP, introducerPortNumber);
 
         return ipAddressAwareNode;
@@ -1043,7 +1052,7 @@ class DHTServer {
     public SkipNode createLocalityAwareNode (String introducerIP, int introducerPortNumber, String ip,
                                              int portNumber, String localityID, HashMap kvMap) {
         LookupTableFactory factory = new LookupTableFactory();
-        ConcurrentLookupTable table = (ConcurrentLookupTable) factory.createDefaultLookupTable(LEVEL);
+        ConcurrentLookupTable table = (ConcurrentLookupTable) factory.createDefaultLookupTable(LOCALITY_AWARE_LEVEL);
 
         String nameId = "";
 
@@ -1051,7 +1060,8 @@ class DHTServer {
         //Supposed to randomly generated.
         int item = (100*edgeNum)+dhtNum;
 
-        nameId = nameId + String.format("%16s", Integer.toBinaryString(item)).replaceAll(" ", "0");
+        int idLength = 32 - localityID.length();
+        nameId = nameId + String.format("%"+idLength+"s", Integer.toBinaryString(item)).replaceAll(" ", "0");
         //Length of nameID is finally 32.
         System.out.println("LA name ID: " + nameId + " len: " + nameId.length());
 
@@ -1076,7 +1086,10 @@ class DHTServer {
         localityAwareNode.setMiddleLayer(middleLayer);
         underlay.setMiddleLayer(middleLayer);
 
-        System.out.println("introducer IP: " + introducerIP + " introducer port: " + introducerPortNumber);
+        introducerPortNumber += 50;
+        if(logging){
+            System.out.println("introducer IP: " + introducerIP + " introducer port: " + introducerPortNumber);
+        }
         localityAwareNode.insert(introducerIP, introducerPortNumber);
 
         return localityAwareNode;
@@ -1192,11 +1205,45 @@ class DHTServer {
                     System.out.println("Locality ID: "+localityID);
                     System.out.println("Key: "+firstSHA);
                 }
-                String valueLA = localityAwareNode.getResource(firstSHA);
-                        //localityAwareNode.getResourceByNameID(localityID, firstSHA);
+                String valueLA = localityAwareNode.getResource(firstSHA); //Search its locality.
                 if (valueLA != null && !valueLA.equals("")) { //Hit
                     isHit = true;
                     searchResult = valueLA;
+                }
+                else { //Failed
+                    int targetPrefixLength = LOCALITY_AWARE_LEVEL-1;
+                    while ((valueLA == null || valueLA.equals("")) && targetPrefixLength>=0) {
+                        int prefixRemainder = LOCALITY_AWARE_LEVEL - targetPrefixLength;
+                        for (int j = 0; j<Math.pow(2, prefixRemainder); j++) {
+                            String targetLocalityID = localityID.substring(0,targetPrefixLength) + String.format("%"+prefixRemainder+"s", Integer.toBinaryString(j)).replaceAll(" ", "0");
+
+                            if (!targetLocalityID.equals(localityID)) {
+                                if(logging){
+                                    System.out.println("Locality-aware approach searching");
+                                    System.out.println("Locality ID: "+targetLocalityID);
+                                    System.out.println("Key: "+firstSHA);
+                                }
+                                valueLA = localityAwareNode.getResourceByNameID(targetLocalityID, firstSHA);
+                            }
+                            if (valueLA != null && !valueLA.equals("")) { //Hit
+                                isHit = true;
+                                searchResult = valueLA;
+                                break;
+                            }
+                        }
+                        if (valueLA != null && !valueLA.equals("")) { //Hit
+                            isHit = true;
+                            searchResult = valueLA;
+                            break;
+                        }
+                        if (targetPrefixLength == 0) {
+                            break;
+                        }
+                        while (targetPrefixLength>0 && localityID.charAt(targetPrefixLength) == '0') {
+                            targetPrefixLength --;
+
+                        }
+                    }
                 }
             }
             if (!isHit) { //Locality-aware approach searching failed
@@ -1381,10 +1428,43 @@ class DHTServer {
                     System.out.println("Key: "+firstSHA);
                 }
                 String valueLA = localityAwareNode.getResource(firstSHA);
-                        //localityAwareNode.getResourceByNameID(localityID, firstSHA);
                 if (valueLA != null && !valueLA.equals("")) { //Hit
                     isHit = true;
                     searchResult = valueLA;
+                }
+                else { //Failed
+                    int targetPrefixLength = LOCALITY_AWARE_LEVEL-1;
+                    while ((valueLA == null || valueLA.equals("")) && targetPrefixLength>=0) {
+                        int prefixRemainder = LOCALITY_AWARE_LEVEL - targetPrefixLength;
+                        for (int j = 0; j<Math.pow(2, prefixRemainder); j++) {
+                            String targetLocalityID = localityID.substring(0,targetPrefixLength) + String.format("%"+prefixRemainder+"s", Integer.toBinaryString(j)).replaceAll(" ", "0");
+
+                            if(logging){
+                                System.out.println("Locality-aware approach searching");
+                                System.out.println("Locality ID: "+targetLocalityID);
+                                System.out.println("Key: "+firstSHA);
+                            }
+                            if (!targetLocalityID.equals(localityID)) {
+                                valueLA = localityAwareNode.getResourceByNameID(targetLocalityID, firstSHA);
+                            }
+                            if (valueLA != null && !valueLA.equals("")) { //Hit
+                                isHit = true;
+                                searchResult = valueLA;
+                                break;
+                            }
+                        }
+                        if (valueLA != null && !valueLA.equals("")) { //Hit
+                            isHit = true;
+                            searchResult = valueLA;
+                            break;
+                        }
+                        if (targetPrefixLength == 0) {
+                            break;
+                        }
+                        while (targetPrefixLength>0 && localityID.charAt(targetPrefixLength) == '0') {
+                            targetPrefixLength --;
+                        }
+                    }
                 }
             }
             if (!isHit) { //Locality-aware approach searching failed
@@ -1576,6 +1656,40 @@ class DHTServer {
                 if (valueLA != null && !valueLA.equals("")) { //Hit
                     isHit = true;
                     searchResult = valueLA;
+                }
+                else { //Failed
+                    int targetPrefixLength = LOCALITY_AWARE_LEVEL-1;
+                    while ((valueLA == null || valueLA.equals("")) && targetPrefixLength>=0) {
+                        int prefixRemainder = LOCALITY_AWARE_LEVEL - targetPrefixLength;
+                        for (int j = 0; j<Math.pow(2, prefixRemainder); j++) {
+                            String targetLocalityID = localityID.substring(0,targetPrefixLength) + String.format("%"+prefixRemainder+"s", Integer.toBinaryString(j)).replaceAll(" ", "0");
+
+                            if(logging){
+                                System.out.println("Locality-aware approach searching");
+                                System.out.println("Locality ID: "+targetLocalityID);
+                                System.out.println("Key: "+firstSHA);
+                            }
+                            if (!targetLocalityID.equals(localityID)) {
+                                valueLA = localityAwareNode.getResourceByNameID(targetLocalityID, firstSHA);
+                            }
+                            if (valueLA != null && !valueLA.equals("")) { //Hit
+                                isHit = true;
+                                searchResult = valueLA;
+                                break;
+                            }
+                        }
+                        if (valueLA != null && !valueLA.equals("")) { //Hit
+                            isHit = true;
+                            searchResult = valueLA;
+                            break;
+                        }
+                        if (targetPrefixLength == 0) {
+                            break;
+                        }
+                        while (targetPrefixLength>0 && localityID.charAt(targetPrefixLength) == '0') {
+                            targetPrefixLength --;
+                        }
+                    }
                 }
             }
             if (!isHit) { //Locality-aware approach searching failed
@@ -1856,10 +1970,43 @@ class DHTServer {
                 System.out.println("Key: "+firstSHA);
             }
             String valueLA = localityAwareNode.getResource(firstSHA);
-                //localityAwareNode.getResourceByNameID(localityID, firstSHA);
             if (valueLA != null && !valueLA.equals("")) { //Hit
                 isHit = true;
                 searchResult = valueLA;
+            }
+            else { //Failed
+                int targetPrefixLength = LOCALITY_AWARE_LEVEL-1;
+                while ((valueLA == null || valueLA.equals("")) && targetPrefixLength>=0) {
+                    int prefixRemainder = LOCALITY_AWARE_LEVEL - targetPrefixLength;
+                    for (int j = 0; j<Math.pow(2, prefixRemainder); j++) {
+                        String targetLocalityID = localityID.substring(0,targetPrefixLength) + String.format("%"+prefixRemainder+"s", Integer.toBinaryString(j)).replaceAll(" ", "0");
+
+                        if(logging){
+                            System.out.println("Locality-aware approach searching");
+                            System.out.println("Locality ID: "+targetLocalityID);
+                            System.out.println("Key: "+firstSHA);
+                        }
+                        if (!targetLocalityID.equals(localityID)) {
+                            valueLA = localityAwareNode.getResourceByNameID(targetLocalityID, firstSHA);
+                        }
+                        if (valueLA != null && !valueLA.equals("")) { //Hit
+                            isHit = true;
+                            searchResult = valueLA;
+                            break;
+                        }
+                    }
+                    if (valueLA != null && !valueLA.equals("")) { //Hit
+                        isHit = true;
+                        searchResult = valueLA;
+                        break;
+                    }
+                    if (targetPrefixLength == 0) {
+                        break;
+                    }
+                    while (targetPrefixLength>0 && localityID.charAt(targetPrefixLength) == '0') {
+                        targetPrefixLength --;
+                    }
+                }
             }
         }
         if (!isHit) { //Locality-aware approach searching failed

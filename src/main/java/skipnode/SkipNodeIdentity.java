@@ -19,7 +19,7 @@ package skipnode;
 
  Rev. history : 2021-07-02
  Version : 1.2.1
- commonBits() is modified. 
+ commonBits() is modified.
  Modifier : Jaehee ha (jaehee.ha@kaist.ac.kr)
  */
 /* -------------------------------------------------------- */

@@ -7,6 +7,11 @@ package lookup;
  Version : 1.0.3
  Added nodesAtHighestLevel.
  Modifier : Jaehee ha (jaehee.ha@kaist.ac.kr)
+
+ Rev. history : 2021-07-02
+ Version : 1.2.1
+ Added HashMap object repLocalityNode;
+ Modifier : Jaehee ha (jaehee.ha@kaist.ac.kr)
  */
 /* -------------------------------------------------------- */
 
@@ -15,6 +20,7 @@ import skipnode.SkipNodeIdentity;
 
 import java.math.BigInteger;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
@@ -35,6 +41,8 @@ public class ConcurrentLookupTable implements LookupTable {
 
     private ArrayList<SkipNodeIdentity> nodesAtHighestLevel;
 
+    private HashMap<String, SkipNodeIdentity> repLocalityNodes;
+
     private enum direction {
         LEFT,
         RIGHT
@@ -48,6 +56,7 @@ public class ConcurrentLookupTable implements LookupTable {
             nodes.add(i, LookupTable.EMPTY_NODE);
         }
         nodesAtHighestLevel = new ArrayList<SkipNodeIdentity>();
+        repLocalityNodes = new HashMap<String, SkipNodeIdentity>();
     }
 
     /**
@@ -68,6 +77,21 @@ public class ConcurrentLookupTable implements LookupTable {
     public ArrayList<SkipNodeIdentity> getNodeListAtHighestLevel () {
         return nodesAtHighestLevel;
     }
+
+    @Override
+    public void addNodeIntoMapRepLocalityNodes (SkipNodeIdentity id) {
+        if (repLocalityNodes.get(id.getNameID().substring(0,numLevels))!=null) {
+            if (Math.random() < Math.random()) {
+                repLocalityNodes.put(id.getNameID().substring(0,numLevels), id);
+            }
+        }
+        else {
+            repLocalityNodes.put(id.getNameID().substring(0,numLevels), id);
+        }
+    }
+
+    @Override
+    public HashMap<String, SkipNodeIdentity> getMapRepLocalityNodes () { return repLocalityNodes; }
 
     @Override
     public SkipNodeIdentity updateLeft(SkipNodeIdentity node, int level) {
@@ -217,4 +241,5 @@ public class ConcurrentLookupTable implements LookupTable {
             return level * 2 + 1;
         }
     }
+
 }

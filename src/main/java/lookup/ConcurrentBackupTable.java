@@ -2,10 +2,7 @@ package lookup;
 import skipnode.SkipNodeIdentity;
 
 import java.math.BigInteger;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.List;
+import java.util.*;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.stream.Collectors;
@@ -283,6 +280,16 @@ public class ConcurrentBackupTable implements LookupTable {
 
     @Override
     public ArrayList<SkipNodeIdentity> getNodeListAtHighestLevel() {
+        return null;
+    }
+
+    @Override
+    public void addNodeIntoMapRepLocalityNodes(SkipNodeIdentity id) {
+
+    }
+
+    @Override
+    public HashMap<String, SkipNodeIdentity> getMapRepLocalityNodes() {
         return null;
     }
 

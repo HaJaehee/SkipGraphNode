@@ -244,6 +244,7 @@ public class SkipNode implements SkipNodeInterface {
         lookupTable.setNodeListAtHighestLevel(getNodeListFromNeighborAtHighestLevel());
         lookupTable.addNodeIntoListAtHighestLevel(getIdentity(null));
         addNodeIntoListAtHighestLevelRecursively();
+        lookupTable.addNodeIntoMapRepLocalityNodes(getIdentity(null));
         insertionLock.endInsertion();
     }
 
@@ -712,6 +713,13 @@ public class SkipNode implements SkipNodeInterface {
         if(level < 0) {
             return new SearchResult(getIdentity(handleJedisWithNameID(isGettingResource, isSettingResource, resourceKey, resourceValue)));
         }
+
+        //TODO
+        if (isGettingResource && resourceKey != null) {
+            SkipNodeIdentity repNode = lookupTable.getMapRepLocalityNodes().get(targetNameID);
+            return new SearchResult(middleLayer.handleResourceByNumID(repNode.getAddress(), repNode.getPort(), new BigInteger(resourceKey, 16), isGettingResource, false, null));
+        }
+
         // Initiate the search.
         return middleLayer.handleResourceByNameIDRecursive(address, port, targetNameID, level, isGettingResource, isSettingResource, resourceKey, resourceValue);
     }

@@ -51,8 +51,11 @@ package skipnode;
  Static key-value Map is shared among the SkipGraph nodes.
  Modifier : Jaehee ha (jaehee.ha@kaist.ac.kr)
 
+
  //TODO Are we need to delete a resource?
  //TODO name ID body가 000...인 node를 찾는 알고리즘이 필요함. (node list at highest level에서 찾으면 쉬움)
+ //TODO List of locality representative nodes MUST be needed.
+ //      HOW??
  */
 /* -------------------------------------------------------- */
 
@@ -696,6 +699,7 @@ public class SkipNode implements SkipNodeInterface {
 
     private SearchResult handleResourceByNameID(String targetNameID, boolean isGettingResource, boolean isSettingResource, String resourceKey, String resourceValue) {
 
+        logger.debug("Common bits between "+nameID+" and "+targetNameID+" is "+SkipNodeIdentity.commonBits(nameID, targetNameID));
         if(nameID.equals(targetNameID) || SkipNodeIdentity.commonBits(nameID, targetNameID) == lookupTable.getNumLevels()) {
             return new SearchResult(getIdentity(handleJedisWithNameID(isGettingResource, isSettingResource, resourceKey, resourceValue)));
         }

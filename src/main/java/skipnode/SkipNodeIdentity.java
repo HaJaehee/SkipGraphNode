@@ -16,6 +16,11 @@ package skipnode;
  Version : 1.0.4
  Removed unused Jedis features.
  Modifier : Jaehee ha (jaehee.ha@kaist.ac.kr)
+
+ Rev. history : 2021-07-02
+ Version : 1.2.1
+ commonBits() is modified. 
+ Modifier : Jaehee ha (jaehee.ha@kaist.ac.kr)
  */
 /* -------------------------------------------------------- */
 
@@ -97,10 +102,14 @@ public class SkipNodeIdentity implements Serializable, Comparable<SkipNodeIdenti
         if(name1 == null || name2 == null) {
             return -1;
         }
-        if(name1.length() != name2.length())
+
+//        if(name1.length() != name2.length())
+//            return -1;
+        if(name1.length() < name2.length())
             return -1;
+
         int i = 0;
-        while(i < name1.length() && name1.charAt(i) == name2.charAt(i)) i++;
+        while(i < name2.length() && name1.charAt(i) == name2.charAt(i)) i++;
         return i;
     }
 

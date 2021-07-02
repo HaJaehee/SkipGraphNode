@@ -951,6 +951,7 @@ class DHTServer {
     private final Bootstrap bClient;
     private final int ovsPort = 9999;
 
+    private final boolean isIpAddrAwareAvailable = false;
 
     public DHTServer(String ip, int portNumber, String localityID, HashMap kvMap, boolean logging, boolean logFileOut,
                      int edgeNum, int dhtNum, Bootstrap bClient) throws Exception {
@@ -960,7 +961,12 @@ class DHTServer {
         this.bClient = bClient;
         this.logFileOut = logFileOut;
 
-        this.ipAddressAwareNode = createIPAddressAwareNode(ip, portNumber, kvMap);
+        if (isIpAddrAwareAvailable) {
+            this.ipAddressAwareNode = createIPAddressAwareNode(ip, portNumber, kvMap);
+        }
+        else {
+            this.ipAddressAwareNode = null;
+        }
         if (localityID != null) {
             this.localityID = localityID;
             this.localityAwareNode = createLocalityAwareNode(ip, portNumber, localityID, kvMap);
@@ -980,8 +986,13 @@ class DHTServer {
         this.dhtNum = dhtNum;
         this.bClient = bClient;
         this.logFileOut = logFileOut;
-        //Insert this node into DHT network by being introduced by IP address approach node.
-        this.ipAddressAwareNode = createIPAddressAwareNode(introducerIP, introducerPortNumber, ip, portNumber, kvMap);
+        if (isIpAddrAwareAvailable) {
+            //Insert this node into DHT network by being introduced by IP address approach node.
+            this.ipAddressAwareNode = createIPAddressAwareNode(introducerIP, introducerPortNumber, ip, portNumber, kvMap);
+        }
+        else {
+            this.ipAddressAwareNode = null;
+        }
         if (localityID != null) {
             this.localityID = localityID;
             //Insert this node into DHT network by being introduced by IP address approach node.
@@ -1172,6 +1183,107 @@ class DHTServer {
         }
     }
 
+    public String search (String hashed, String input) {
+        boolean isHit = false;
+        String searchResult = null;
+        SkipNodeIdentity nodeIdentity = null;
+        if (localityID != null && localityAwareNode != null) {
+            //Search entry with MOID on Edge's locality site
+            if(logging){
+                System.out.println("Locality-aware approach searching");
+                System.out.println("Locality ID: "+localityID);
+                System.out.println("Key: "+hashed);
+            }
+            String valueLA = localityAwareNode.getResource(hashed); //Search its locality.
+            if (valueLA != null && !valueLA.equals("")) { //Hit
+                isHit = true;
+                searchResult = valueLA;
+            }
+            else { //Failed
+                int targetPrefixLength = LOCALITY_AWARE_LEVEL;
+                while ((valueLA == null || valueLA.equals("")) && targetPrefixLength>=0) {
+                    int prefixRemainder = LOCALITY_AWARE_LEVEL - targetPrefixLength;
+                    if (prefixRemainder > 0) {
+                        for (int incremental = (int) Math.pow(2, prefixRemainder - 1); incremental < Math.pow(2, prefixRemainder); incremental++) {
+                            String targetLocalityID = localityID.substring(0, targetPrefixLength) + String.format("%" + prefixRemainder + "s", Integer.toBinaryString(incremental)).replaceAll(" ", "0");
+
+                            if (!targetLocalityID.equals(localityID)) {
+                                if (logging) {
+                                    System.out.println("Locality-aware approach searching");
+                                    System.out.println("Locality ID: " + targetLocalityID);
+                                    System.out.println("Key: " + hashed);
+                                }
+                                valueLA = localityAwareNode.getResourceByNameID(targetLocalityID, hashed);
+                            }
+                            if (valueLA != null && !valueLA.equals("")) { //Hit
+                                isHit = true;
+                                searchResult = valueLA;
+                                break;
+                            }
+                        }
+                    }
+                    if (valueLA != null && !valueLA.equals("")) { //Hit
+                        isHit = true;
+                        searchResult = valueLA;
+                        break;
+                    }
+                    if (targetPrefixLength == 0) {
+                        break;
+                    }
+                    targetPrefixLength --;
+                    if (localityID.charAt(targetPrefixLength) == '1') {
+                        targetPrefixLength --;
+                    }
+                }
+            }
+        }
+        if (!isHit && !hashed.equals(input) && ipAddressAwareNode != null) { //Locality-aware approach searching failed
+            //Search entry with network address of IP address on IP address approach
+            String[] ipSplit = input.split("\\.");
+            String nameId = "";
+            //ONLY USE THIRD IP FIELD 8 bits FOR Prefix
+            Integer item = Integer.parseInt(ipSplit[1]);
+            nameId = "1" + String.format("%8s", Integer.toBinaryString(item)).replaceAll(" ", "0").substring(1);
+            item = Integer.parseInt(ipSplit[2]);
+            nameId = nameId + String.format("%8s", Integer.toBinaryString(item)).replaceAll(" ", "0");
+            if(logging) {
+                System.out.println("IP address-aware approach searching");
+                System.out.println("IP based name ID: "+nameId);
+                System.out.println("Key: "+hashed);
+            }
+            String valueIA = ipAddressAwareNode.getResourceByNameID(nameId, hashed);
+            if (valueIA != null && !valueIA.equals("")) { //Hit
+                //Revise entry's locator from prior Edge to recent Edge
+                //GOTO (2)
+                isHit = true;
+                searchResult = valueIA;
+            }
+        }
+        if (!isHit) { //IP address-approach searching failed
+            if(logging) {
+                System.out.println("Hash approach searching");
+                System.out.println("Key: "+hashed);
+            }
+            String valueHash = null;
+            if (ipAddressAwareNode != null) {
+                valueHash = ipAddressAwareNode.getResourceByResourceKey(hashed);
+            }
+            if (valueHash != null && !valueHash.equals("")) { //Hit
+                isHit = true;
+                searchResult = valueHash;
+            }
+            if (!isHit && localityID != null && localityAwareNode != null) {
+                valueHash = localityAwareNode.getResourceByResourceKey(hashed);
+            }
+            if (valueHash != null && !valueHash.equals("")) { //Hit
+                isHit = true;
+                searchResult = valueHash;
+            }
+        }
+
+        return searchResult;
+    }
+
     //TODO
     //Data Requester에서 동작하는 알고리즘
     //LID_LIST update는 어떻게 수행해야 하는가?
@@ -1193,172 +1305,91 @@ class DHTServer {
 
             String strIP = input.split(":")[0];
             String firstSHA = sha256(strIP);
-            System.out.println("Key: " + firstSHA);
+            if (logging){
+                System.out.println("Key: " + firstSHA);
+            }
 
-            boolean isHit = false;
-            String searchResult = null;
-            SkipNodeIdentity nodeIdentity = null;
-            if (localityID != null && localityAwareNode != null) {
-                //Search entry with MOID on Edge's locality site
-                if(logging){
-                    System.out.println("Locality-aware approach searching");
-                    System.out.println("Locality ID: "+localityID);
-                    System.out.println("Key: "+firstSHA);
+            String searchResult = search(firstSHA, input);
+
+            if (searchResult != null) { //Hit
+                //TODO
+                //Jaehyun implements sending UDP packet to OVS
+                if (logging) System.out.println("OpCode == OPCODE_GET_HASH, " + searchResult);
+                String foundData = searchResult;
+                JsonParser parser = new JsonParser();
+                JsonObject jobj = (JsonObject) parser.parse(foundData);
+
+                String recvData = jobj.get(VISITING_IP + "").getAsString() + jobj.get(ES_IP + "").getAsString();
+
+                byte[] sendData = new byte[43];//Jaehee modified 160720
+
+                sendData[0] = OPCODE_QUERIED_HASH;
+                sendData[1] = lSwitchNum;
+                for (int i = 0; i < 4; i++) {
+                    sendData[2 + (3 - i)] = (byte) ((Character.digit(recvData.charAt(i * 2), 16) << 4) + Character.digit(recvData.charAt(i * 2 + 1), 16));
+                    sendData[6 + LM_HDR_LENGTH + (3 - i)] = (byte) ((Character.digit(recvData.charAt((i + 4) * 2), 16) << 4) + Character.digit(recvData.charAt((i + 4) * 2 + 1), 16));
+                }//Jaehee modified 160720
+                for (int i = 0; i < LM_HDR_LENGTH; i++) {//Jaehee modified 160720
+                    sendData[6 + i] = lHashedIP[i];
                 }
-                String valueLA = localityAwareNode.getResource(firstSHA); //Search its locality.
-                if (valueLA != null && !valueLA.equals("")) { //Hit
-                    isHit = true;
-                    searchResult = valueLA;
+                sendData[42] = '\0';
+
+                // Return entry to OvS kernal module
+                Channel clientCh = null;
+                try {
+                    clientCh = bClient.bind(0).sync().channel();
+                    clientCh.writeAndFlush(
+                            new DatagramPacket(Unpooled.copiedBuffer(sendData), new InetSocketAddress("localhost", ovsPort))).addListener(ChannelFutureListener.CLOSE);
+
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
                 }
-                else { //Failed
-                    int targetPrefixLength = LOCALITY_AWARE_LEVEL-1;
-                    while ((valueLA == null || valueLA.equals("")) && targetPrefixLength>=0) {
-                        int prefixRemainder = LOCALITY_AWARE_LEVEL - targetPrefixLength;
-                        for (int j = 0; j<Math.pow(2, prefixRemainder); j++) {
-                            String targetLocalityID = localityID.substring(0,targetPrefixLength) + String.format("%"+prefixRemainder+"s", Integer.toBinaryString(j)).replaceAll(" ", "0");
 
-                            if (!targetLocalityID.equals(localityID)) {
-                                if(logging){
-                                    System.out.println("Locality-aware approach searching");
-                                    System.out.println("Locality ID: "+targetLocalityID);
-                                    System.out.println("Key: "+firstSHA);
-                                }
-                                valueLA = localityAwareNode.getResourceByNameID(targetLocalityID, firstSHA);
-                            }
-                            if (valueLA != null && !valueLA.equals("")) { //Hit
-                                isHit = true;
-                                searchResult = valueLA;
-                                break;
-                            }
-                        }
-                        if (valueLA != null && !valueLA.equals("")) { //Hit
-                            isHit = true;
-                            searchResult = valueLA;
-                            break;
-                        }
-                        if (targetPrefixLength == 0) {
-                            break;
-                        }
-                        do {
-                            targetPrefixLength --;
-
-                        }while (targetPrefixLength>0 && localityID.charAt(targetPrefixLength) == '0');
+                if (logging) {
+                    System.out.println("send oid:");
+                    for (int i = 0; i < LM_HDR_LENGTH; i++) {
+                        System.out.printf("%02x", sendData[6 + i]);
                     }
+                    System.out.println();
                 }
-            }
-            if (!isHit) { //Locality-aware approach searching failed
-                //Search entry with network address of IP address on IP address approach
-                String[] ipSplit = input.split("\\.");
-                String nameId = "";
-                //ONLY USE THIRD IP FIELD 8 bits FOR Prefix
-                Integer item = Integer.parseInt(ipSplit[1]);
-                nameId = "1" + String.format("%8s", Integer.toBinaryString(item)).replaceAll(" ", "0").substring(1);
-                item = Integer.parseInt(ipSplit[2]);
-                nameId = nameId + String.format("%8s", Integer.toBinaryString(item)).replaceAll(" ", "0");
-                if(logging) {
-                    System.out.println("IP address-aware approach searching");
-                    System.out.println("IP based name ID: "+nameId);
-                    System.out.println("Key: "+firstSHA);
-                }
-                String valueIA = ipAddressAwareNode.getResourceByNameID(nameId, firstSHA);
-                if (valueIA != null && !valueIA.equals("")) { //Hit
-                    //Revise entry's locator from prior Edge to recent Edge
-                    //GOTO (2)
-                    isHit = true;
-                    searchResult = valueIA;
-                }
-            }
-            if (!isHit) { //IP address-approach searching failed
-                if(logging) {
-                    System.out.println("Hash approach searching");
-                    System.out.println("Key: "+firstSHA);
-                }
-                String valueHash = ipAddressAwareNode.getResourceByResourceKey(firstSHA);
-                if (valueHash != null && !valueHash.equals("")) { //Hit
-                    isHit = true;
-                    searchResult = valueHash;
-                }
-            }
-            if (isHit) {
-                if (searchResult != null) { //Hit
-                    //TODO
-                    //Jaehyun implements sending UDP packet to OVS
-                    if (logging) System.out.println("OpCode == OPCODE_GET_HASH, " + searchResult);
-                    String foundData = searchResult;
-                    JsonParser parser = new JsonParser();
-                    JsonObject jobj = (JsonObject) parser.parse(foundData);
 
-                    String recvData = jobj.get(VISITING_IP + "").getAsString() + jobj.get(ES_IP + "").getAsString();
+                replicateData(jobj, firstSHA);
 
-                    byte[] sendData = new byte[43];//Jaehee modified 160720
+                if (logFileOut) {
+                    Date enddate = new Date();
+                    long endtime = enddate.getTime();
+                    long diff = endtime - starttime;
 
-                    sendData[0] = OPCODE_QUERIED_HASH;
-                    sendData[1] = lSwitchNum;
-                    for (int i = 0; i < 4; i++) {
-                        sendData[2 + (3 - i)] = (byte) ((Character.digit(recvData.charAt(i * 2), 16) << 4) + Character.digit(recvData.charAt(i * 2 + 1), 16));
-                        sendData[6 + LM_HDR_LENGTH + (3 - i)] = (byte) ((Character.digit(recvData.charAt((i + 4) * 2), 16) << 4) + Character.digit(recvData.charAt((i + 4) * 2 + 1), 16));
-                    }//Jaehee modified 160720
-                    for (int i = 0; i < LM_HDR_LENGTH; i++) {//Jaehee modified 160720
-                        sendData[6 + i] = lHashedIP[i];
-                    }
-                    sendData[42] = '\0';
+                    String fileName = "/DHTGetDelay.log";
+                    fileName = System.getProperty("user.dir") + fileName.trim();
+                    File file = new File(fileName);
 
-                    // Return entry to OvS kernal module
-                    Channel clientCh = null;
+                    FileWriter fw = null;
+                    BufferedWriter bw = null;
+                    PrintWriter out = null;
                     try {
-                        clientCh = bClient.bind(0).sync().channel();
-                        clientCh.writeAndFlush(
-                                new DatagramPacket(Unpooled.copiedBuffer(sendData), new InetSocketAddress("localhost", ovsPort))).addListener(ChannelFutureListener.CLOSE);
+                        fw = new FileWriter(file, true);
+                        bw = new BufferedWriter(fw);
+                        out = new PrintWriter(bw);
 
-                    } catch (InterruptedException e) {
-                        e.printStackTrace();
-                    }
+                        out.println(diff);
 
-                    if (logging) {
-                        System.out.println("send oid:");
-                        for (int i = 0; i < LM_HDR_LENGTH; i++) {
-                            System.out.printf("%02x", sendData[6 + i]);
+                    } catch (IOException e) {
+                        //exception handling left as an exercise for the reader
+                    } finally {
+                        if (out != null) {
+                            out.close();
                         }
-                        System.out.println();
-                    }
-
-                    replicateData(jobj, firstSHA);
-
-                    if (logFileOut) {
-                        Date enddate = new Date();
-                        long endtime = enddate.getTime();
-                        long diff = endtime - starttime;
-
-                        String fileName = "/DHTGetDelay.log";
-                        fileName = System.getProperty("user.dir") + fileName.trim();
-                        File file = new File(fileName);
-
-                        FileWriter fw = null;
-                        BufferedWriter bw = null;
-                        PrintWriter out = null;
-                        try {
-                            fw = new FileWriter(file, true);
-                            bw = new BufferedWriter(fw);
-                            out = new PrintWriter(bw);
-
-                            out.println(diff);
-
-                        } catch (IOException e) {
-                            //exception handling left as an exercise for the reader
-                        } finally {
-                            if (out != null) {
-                                out.close();
-                            }
-                            if (bw != null) {
-                                bw.close();
-                            }
-                            if (fw != null) {
-                                fw.close();
-                            }
+                        if (bw != null) {
+                            bw.close();
+                        }
+                        if (fw != null) {
+                            fw.close();
                         }
                     }
+                }
                     //GOTO (2)
-                } else { // Fail
+                 else { // Fail
                     // Write new entry, home site is recent Edge
 
                     //TODO
@@ -1417,69 +1448,10 @@ class DHTServer {
         } else if (opCode == OPCODE_GET_IP) {
             //In this case, input is an objectKey
             String firstSHA = input;
-            boolean isLocalityIdSame = false;
-            boolean isHit = false;
-            String searchResult = null;
-            if (localityID != null && localityAwareNode != null) {
-                //Search entry with MOID on Edge's locality site
-                if(logging){
-                    System.out.println("Locality-aware approach searching");
-                    System.out.println("Locality ID: "+localityID);
-                    System.out.println("Key: "+firstSHA);
-                }
-                String valueLA = localityAwareNode.getResource(firstSHA);
-                if (valueLA != null && !valueLA.equals("")) { //Hit
-                    isHit = true;
-                    searchResult = valueLA;
-                }
-                else { //Failed
-                    int targetPrefixLength = LOCALITY_AWARE_LEVEL-1;
-                    while ((valueLA == null || valueLA.equals("")) && targetPrefixLength>=0) {
-                        int prefixRemainder = LOCALITY_AWARE_LEVEL - targetPrefixLength;
-                        for (int j = 0; j<Math.pow(2, prefixRemainder); j++) {
-                            String targetLocalityID = localityID.substring(0,targetPrefixLength) + String.format("%"+prefixRemainder+"s", Integer.toBinaryString(j)).replaceAll(" ", "0");
 
-                            if(logging){
-                                System.out.println("Locality-aware approach searching");
-                                System.out.println("Locality ID: "+targetLocalityID);
-                                System.out.println("Key: "+firstSHA);
-                            }
-                            if (!targetLocalityID.equals(localityID)) {
-                                valueLA = localityAwareNode.getResourceByNameID(targetLocalityID, firstSHA);
-                            }
-                            if (valueLA != null && !valueLA.equals("")) { //Hit
-                                isHit = true;
-                                searchResult = valueLA;
-                                break;
-                            }
-                        }
-                        if (valueLA != null && !valueLA.equals("")) { //Hit
-                            isHit = true;
-                            searchResult = valueLA;
-                            break;
-                        }
-                        if (targetPrefixLength == 0) {
-                            break;
-                        }
-                        do {
-                            targetPrefixLength --;
-                        }while (targetPrefixLength>0 && localityID.charAt(targetPrefixLength) == '0');
-                    }
-                }
-            }
-            if (!isHit) { //Locality-aware approach searching failed
-                //Search entry with hashed IP address, MOID
-                if(logging) {
-                    System.out.println("Hash approach searching");
-                    System.out.println("Key: "+firstSHA);
-                }
-                String valueHash = ipAddressAwareNode.getResource(firstSHA);
-                if (valueHash != null && !valueHash.equals("")) { //Hit
-                    isHit = true;
-                    searchResult = valueHash;
-                }
-            }
-            if (isHit) { //Locality-aware approach searching failed
+            String searchResult = search(firstSHA, input);
+
+            if (searchResult != null) { //Locality-aware approach searching failed
                 //Jaehyun needs to implement sending UDP packet to OVS
                 if (logging) System.out.println("OpCode == OPCODE_GET_IP, " + searchResult);
                 String foundData = searchResult;
@@ -1642,90 +1614,10 @@ class DHTServer {
             byte[] lHashedIP = hashedIP.clone();
             String firstSHA = sha256(input);
 
-            boolean isHit = false;
-            String searchResult = null;
-            if (localityID != null && localityAwareNode != null) {
-                //Search entry with MOID on Edge's locality site
-                if(logging){
-                    System.out.println("Locality-aware approach searching");
-                    System.out.println("Locality ID: "+localityID);
-                    System.out.println("Key: "+firstSHA);
-                }
-                String valueLA = localityAwareNode.getResource(firstSHA);
-                        //localityAwareNode.getResourceByNameID(localityID, firstSHA);
-                if (valueLA != null && !valueLA.equals("")) { //Hit
-                    isHit = true;
-                    searchResult = valueLA;
-                }
-                else { //Failed
-                    int targetPrefixLength = LOCALITY_AWARE_LEVEL-1;
-                    while ((valueLA == null || valueLA.equals("")) && targetPrefixLength>=0) {
-                        int prefixRemainder = LOCALITY_AWARE_LEVEL - targetPrefixLength;
-                        for (int j = 0; j<Math.pow(2, prefixRemainder); j++) {
-                            String targetLocalityID = localityID.substring(0,targetPrefixLength) + String.format("%"+prefixRemainder+"s", Integer.toBinaryString(j)).replaceAll(" ", "0");
 
-                            if(logging){
-                                System.out.println("Locality-aware approach searching");
-                                System.out.println("Locality ID: "+targetLocalityID);
-                                System.out.println("Key: "+firstSHA);
-                            }
-                            if (!targetLocalityID.equals(localityID)) {
-                                valueLA = localityAwareNode.getResourceByNameID(targetLocalityID, firstSHA);
-                            }
-                            if (valueLA != null && !valueLA.equals("")) { //Hit
-                                isHit = true;
-                                searchResult = valueLA;
-                                break;
-                            }
-                        }
-                        if (valueLA != null && !valueLA.equals("")) { //Hit
-                            isHit = true;
-                            searchResult = valueLA;
-                            break;
-                        }
-                        if (targetPrefixLength == 0) {
-                            break;
-                        }
-                        do {
-                            targetPrefixLength --;
-                        }while (targetPrefixLength>0 && localityID.charAt(targetPrefixLength) == '0');
-                    }
-                }
-            }
-            if (!isHit) { //Locality-aware approach searching failed
-                //Search entry with network address of IP address on IP address approach
-                String[] ipSplit = input.split("\\.");
-                String nameId = "";
-                //ONLY USE THIRD IP FIELD 8 bits FOR Prefix
-                Integer item = Integer.parseInt(ipSplit[1]);
-                nameId = "1" + String.format("%8s", Integer.toBinaryString(item)).replaceAll(" ", "0").substring(1);
-                item = Integer.parseInt(ipSplit[2]);
-                nameId = nameId + String.format("%8s", Integer.toBinaryString(item)).replaceAll(" ", "0");
-                if(logging) {
-                    System.out.println("IP address-aware approach searching");
-                    System.out.println("IP based name ID: "+nameId);
-                    System.out.println("Key: "+firstSHA);
-                }
-                String valueIA = ipAddressAwareNode.getResourceByNameID(nameId, firstSHA);
-                if (valueIA != null && !valueIA.equals("")) { //Hit
-                    //Revise entry's locator from prior Edge to recent Edge
-                    //GOTO (2)
-                    isHit = true;
-                    searchResult = valueIA;
-                }
-            }
-            if (!isHit) { //IP address-approach searching failed
-                if(logging) {
-                    System.out.println("Hash approach searching");
-                    System.out.println("Key: "+firstSHA);
-                }
-                String valueHash = ipAddressAwareNode.getResource(firstSHA);
-                if (valueHash != null && !valueHash.equals("")) { //Hit
-                    isHit = true;
-                    searchResult = valueHash;
-                }
-            }
-            if (isHit) {
+            String searchResult = search(firstSHA, input);
+
+            if (searchResult != null) {
                 //TODO
                 //Revise entry's locator from prior Edge to recent Edge
                 //Jaehyun implements sending UDP packet to OVS
@@ -1960,90 +1852,10 @@ class DHTServer {
         //opCode == OPCODE_INFORM_CONNECTION or OPCODE_APP_MOBILITY or OPCODE_CTN_MOBILITY
         String firstSHA = sha256(moidSource);
         JsonArray jarray = null;
-        boolean isHit = false;
-        String searchResult = null;
-        if (localityID != null && localityAwareNode != null) {
-            //Search entry with MOID on Edge's locality site
-            if(logging){
-                System.out.println("Locality-aware approach searching");
-                System.out.println("Locality ID: "+localityID);
-                System.out.println("Key: "+firstSHA);
-            }
-            String valueLA = localityAwareNode.getResource(firstSHA);
-            if (valueLA != null && !valueLA.equals("")) { //Hit
-                isHit = true;
-                searchResult = valueLA;
-            }
-            else { //Failed
-                int targetPrefixLength = LOCALITY_AWARE_LEVEL-1;
-                while ((valueLA == null || valueLA.equals("")) && targetPrefixLength>=0) {
-                    int prefixRemainder = LOCALITY_AWARE_LEVEL - targetPrefixLength;
-                    for (int j = 0; j<Math.pow(2, prefixRemainder); j++) {
-                        String targetLocalityID = localityID.substring(0,targetPrefixLength) + String.format("%"+prefixRemainder+"s", Integer.toBinaryString(j)).replaceAll(" ", "0");
 
-                        if(logging){
-                            System.out.println("Locality-aware approach searching");
-                            System.out.println("Locality ID: "+targetLocalityID);
-                            System.out.println("Key: "+firstSHA);
-                        }
-                        if (!targetLocalityID.equals(localityID)) {
-                            valueLA = localityAwareNode.getResourceByNameID(targetLocalityID, firstSHA);
-                        }
-                        if (valueLA != null && !valueLA.equals("")) { //Hit
-                            isHit = true;
-                            searchResult = valueLA;
-                            break;
-                        }
-                    }
-                    if (valueLA != null && !valueLA.equals("")) { //Hit
-                        isHit = true;
-                        searchResult = valueLA;
-                        break;
-                    }
-                    if (targetPrefixLength == 0) {
-                        break;
-                    }
-                    do {
-                        targetPrefixLength --;
-                    }while (targetPrefixLength>0 && localityID.charAt(targetPrefixLength) == '0');
-                }
-            }
-        }
-        if (!isHit) { //Locality-aware approach searching failed
-            //Search entry with network address of IP address on IP address approach
-            String[] ipSplit = moidSource.split("\\.");
+        String searchResult = search(firstSHA, moidSource);
 
-            String nameId = "";
-            //ONLY USE THIRD IP FIELD 8 bits FOR Prefix
-            Integer item = Integer.parseInt(ipSplit[1]);
-            nameId = "1" + String.format("%8s", Integer.toBinaryString(item)).replaceAll(" ", "0").substring(1);
-            item = Integer.parseInt(ipSplit[2]);
-            nameId = nameId + String.format("%8s", Integer.toBinaryString(item)).replaceAll(" ", "0");
-            if(logging) {
-                System.out.println("IP address-aware approach searching");
-                System.out.println("IP based name ID: "+nameId);
-                System.out.println("Key: "+firstSHA);
-            }
-            String valueIA = ipAddressAwareNode.getResourceByNameID(nameId, firstSHA);
-            if (valueIA != null && !valueIA.equals("")) { //Hit
-                //Revise entry's locator from prior Edge to recent Edge
-                //GOTO (2)
-                isHit = true;
-                searchResult = valueIA;
-            }
-        }
-        if (!isHit) { //IP address-approach searching failed
-            if(logging) {
-                System.out.println("Hash approach searching");
-                System.out.println("Key: "+firstSHA);
-            }
-            String valueHash = ipAddressAwareNode.getResource(firstSHA);
-            if (valueHash != null && !valueHash.equals("")) { //Hit
-                isHit = true;
-                searchResult = valueHash;
-            }
-        }
-        if (isHit) {
+        if (searchResult != null) {
             //TODO
             if (logging)
                 System.out.println("OpCode == OPCODE_INFORM_CONNECTION or OPCODE_APP_MOBILITY or OPCODE_CTN_MOBILITY, " + searchResult);
@@ -2118,7 +1930,10 @@ class DHTServer {
         if(localityAwareNode != null && localityID != null) {
             localityAwareNode.storeResourceByNameID(localityID, firstSHA, jsonString.toString());
         }
-        ipAddressAwareNode.storeResourceByResourceKey(firstSHA, jsonString.toString());
+        if(ipAddressAwareNode != null) {
+            ipAddressAwareNode.storeResourceByResourceKey(firstSHA, jsonString.toString());
+        }
+
 
         //peer.put(Number160.createHash(firstSHA)).setData(new Data(jsonString.toString())).start();
     }
@@ -2162,7 +1977,9 @@ class DHTServer {
         if(localityAwareNode != null && localityID != null) {
             localityAwareNode.storeResourceByNameID(localityID, firstSHA, jsonString.toString());
         }
-        ipAddressAwareNode.storeResourceByResourceKey(firstSHA, jsonString.toString());
+        if(ipAddressAwareNode != null) {
+            ipAddressAwareNode.storeResourceByResourceKey(firstSHA, jsonString.toString());
+        }
 //        peer.put(Number160.createHash(firstSHA)).setData(new Data(jsonString.toString())).start();
 
 
@@ -2233,7 +2050,9 @@ class DHTServer {
         if(localityAwareNode != null && localityID != null) {
             localityAwareNode.storeResourceByNameID(localityID, firstSHA, jsonString.toString());
         }
-        ipAddressAwareNode.storeResourceByResourceKey(firstSHA, jsonString.toString());
+        if (ipAddressAwareNode != null) {
+            ipAddressAwareNode.storeResourceByResourceKey(firstSHA, jsonString.toString());
+        }
 //        peer.put(Number160.createHash(firstSHA)).setData(new Data(jsonString.toString())).start();
 
 

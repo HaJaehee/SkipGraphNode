@@ -17,7 +17,7 @@ public class DHTManagerCreater {
     private static ArrayList<DHTManagerThread> dhtMngThrLst = null;
     private static boolean logging = false;
 
-    private static final int LOCALITY_AWARE_LEVEL = 8;
+    public static final int LOCALITY_AWARE_LEVEL = 6;
     DHTManagerCreater () {
     }
 
@@ -27,7 +27,7 @@ public class DHTManagerCreater {
                 logging = true;
             }
             if (args[1].length() != LOCALITY_AWARE_LEVEL && !args[1].equals("none")) {
-                System.out.println("Locality ID length must be 16 or 'none'.");
+                System.out.println("Locality ID length must be "+LOCALITY_AWARE_LEVEL+" or 'none'.");
                 System.exit(0);
             }
             dhtMngThrLst = new ArrayList<DHTManagerThread>();

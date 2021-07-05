@@ -96,6 +96,7 @@ public class SkipNode implements SkipNodeInterface {
     private static HashMap<String, String> kvMap;
 
     private static final int LID_LIST = 7;
+    private final boolean isRepNodeOnly = true;
 
     private MiddleLayer middleLayer;
 
@@ -245,6 +246,7 @@ public class SkipNode implements SkipNodeInterface {
         lookupTable.addNodeIntoListAtHighestLevel(getIdentity(null));
         addNodeIntoListAtHighestLevelRecursively();
         lookupTable.addNodeIntoMapRepLocalityNodes(getIdentity(null));
+
         insertionLock.endInsertion();
     }
 
@@ -573,18 +575,6 @@ public class SkipNode implements SkipNodeInterface {
                     //TODO response is not used in this version.
                 }
             }
-            /* Data Storing Node가 할 일이 아니다.
-            JsonParser jparser = new JsonParser();
-            JsonObject jobj = (JsonObject) jparser.parse(resourceValue);
-            JsonArray jarray = jobj.getAsJsonArray(LID_LIST+"");
-            if (jarray != null) {
-                for (int i = 0; i < jarray.size() ; i++) {
-                    //이거 하면 무한루프 돌텐디 어떻게 막지?
-                    //nameId로 하니까 안돌려나
-                    storeResourceByNameID(jarray.get(i).toString(), numID.toString(16), resourceValue);
-                }
-            }
-            */
 
             returnResourceQueryResult = null;
         }
@@ -700,28 +690,37 @@ public class SkipNode implements SkipNodeInterface {
 
     private SearchResult handleResourceByNameID(String targetNameID, boolean isGettingResource, boolean isSettingResource, String resourceKey, String resourceValue) {
 
-        logger.debug("Common bits between "+nameID+" and "+targetNameID+" is "+SkipNodeIdentity.commonBits(nameID, targetNameID));
-        if(nameID.equals(targetNameID) || SkipNodeIdentity.commonBits(nameID, targetNameID) == lookupTable.getNumLevels()) {
+        logger.debug("Common bits between " + nameID + " and " + targetNameID + " is " + SkipNodeIdentity.commonBits(nameID, targetNameID));
+        if (nameID.equals(targetNameID) || SkipNodeIdentity.commonBits(nameID, targetNameID) == lookupTable.getNumLevels()) {
             return new SearchResult(getIdentity(handleJedisWithNameID(isGettingResource, isSettingResource, resourceKey, resourceValue)));
         }
         // If the node is not completely inserted yet, return a tentative identity.
-        if(!isAvailable()) {
+        if (!isAvailable()) {
             return new SearchResult(unavailableIdentity);
         }
         // Find the level in which the search should be started from.
         int level = SkipNodeIdentity.commonBits(nameID, targetNameID);
-        if(level < 0) {
+        if (level < 0) {
             return new SearchResult(getIdentity(handleJedisWithNameID(isGettingResource, isSettingResource, resourceKey, resourceValue)));
         }
 
         //TODO
-        if (isGettingResource && resourceKey != null) {
+        if (isRepNodeOnly) {
             SkipNodeIdentity repNode = lookupTable.getMapRepLocalityNodes().get(targetNameID);
-            return new SearchResult(middleLayer.handleResourceByNumID(repNode.getAddress(), repNode.getPort(), new BigInteger(resourceKey, 16), isGettingResource, false, null));
+            if (repNode != null) {
+                logger.debug("Name ID: " +targetNameID+" "+repNode.getAddress()+":"+repNode.getPort() + " key: " + resourceKey);
+                return middleLayer.handleResourceByNameIDRecursive(repNode.getAddress(), repNode.getPort(), targetNameID, level, isGettingResource, isSettingResource, resourceKey, resourceValue);
+            } else {
+                logger.debug("Rep node is null");
+                return new SearchResult(getIdentity(null));
+            }
         }
 
         // Initiate the search.
-        return middleLayer.handleResourceByNameIDRecursive(address, port, targetNameID, level, isGettingResource, isSettingResource, resourceKey, resourceValue);
+        else {
+            return middleLayer.handleResourceByNameIDRecursive(address, port, targetNameID, level, isGettingResource, isSettingResource, resourceKey, resourceValue);
+
+        }
     }
 
     /**
@@ -786,7 +785,7 @@ public class SkipNode implements SkipNodeInterface {
     @Override
     public SearchResult handleResourceByNameIDRecursive(String targetNameID, int level, boolean isGettingResource, boolean isSettingResource, String resourceKey, String resourceValue) {
         logger.debug("Handling resource by name ID: in "+this.numID+" handler, target name ID: "+ targetNameID + ", key: " + resourceKey + ", value: "+resourceValue);
-        if(nameID.equals(targetNameID)) {
+        if(nameID.equals(targetNameID) || SkipNodeIdentity.commonBits(nameID, targetNameID) == lookupTable.getNumLevels()) {
             return new SearchResult(getIdentity(handleJedisWithNameID(isGettingResource, isSettingResource, resourceKey, resourceValue)));
         }
         // Buffer contains the `most similar node` to return in case we cannot climb up anymore. At first, we try to set this to the
@@ -909,6 +908,11 @@ public class SkipNode implements SkipNodeInterface {
             nodeList = middleLayer.getNodeListAtHighestLevel(right.getAddress(), right.getPort());
         }
         return nodeList;
+    }
+
+    private SkipNodeIdentity getRepNode (String targetNameID) {
+        SearchResult searchResult = handleResourceByNameIDRecursive(targetNameID, 0, false, false, null, null);
+        return searchResult.result;
     }
     /**
      * Get a node list at highest level recursively.

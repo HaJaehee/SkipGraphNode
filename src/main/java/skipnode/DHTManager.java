@@ -911,7 +911,7 @@ class ClientHandler extends SimpleChannelInboundHandler<DatagramPacket> {
 }
 
 class DHTServer {
-    private static final int LOCALITY_AWARE_LEVEL = 8;
+    private static final int LOCALITY_AWARE_LEVEL = DHTManagerCreater.LOCALITY_AWARE_LEVEL;
     private static final int NETWORK_ADDRESS_LEVEL = 16;
 
     private final SkipNode ipAddressAwareNode;
@@ -1232,6 +1232,23 @@ class DHTServer {
                     }
                     targetPrefixLength --;
                     if (localityID.charAt(targetPrefixLength) == '1') {
+                        for (int innerInc = 0; innerInc < Math.pow(2, prefixRemainder); innerInc++) {
+                            String targetLocalityID = localityID.substring(0, targetPrefixLength) + "0" + String.format("%" + prefixRemainder + "s", Integer.toBinaryString(innerInc)).replaceAll(" ", "0");
+
+                            if (!targetLocalityID.equals(localityID)) {
+                                if (logging) {
+                                    System.out.println("Locality-aware approach searching");
+                                    System.out.println("Locality ID: " + targetLocalityID);
+                                    System.out.println("Key: " + hashed);
+                                }
+                                valueLA = localityAwareNode.getResourceByNameID(targetLocalityID, hashed);
+                            }
+                            if (valueLA != null && !valueLA.equals("")) { //Hit
+                                isHit = true;
+                                searchResult = valueLA;
+                                break;
+                            }
+                        }
                         targetPrefixLength --;
                     }
                 }

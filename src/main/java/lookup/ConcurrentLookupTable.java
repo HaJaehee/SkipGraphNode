@@ -78,20 +78,6 @@ public class ConcurrentLookupTable implements LookupTable {
         return nodesAtHighestLevel;
     }
 
-    @Override
-    public void addNodeIntoMapRepLocalityNodes (SkipNodeIdentity id) {
-        if (repLocalityNodes.get(id.getNameID().substring(0,numLevels))!=null) {
-            if (Math.random() < Math.random()) {
-                repLocalityNodes.put(id.getNameID().substring(0,numLevels), id);
-            }
-        }
-        else {
-            repLocalityNodes.put(id.getNameID().substring(0,numLevels), id);
-        }
-    }
-
-    @Override
-    public HashMap<String, SkipNodeIdentity> getMapRepLocalityNodes () { return repLocalityNodes; }
 
     @Override
     public SkipNodeIdentity updateLeft(SkipNodeIdentity node, int level) {

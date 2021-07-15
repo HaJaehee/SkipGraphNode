@@ -51,7 +51,10 @@ package skipnode;
  Static key-value Map is shared among the SkipGraph nodes.
  Modifier : Jaehee ha (jaehee.ha@kaist.ac.kr)
 
-
+ Rev. history : 2021-07-15
+ Version : 1.1.8
+ Added lowest diff get/store method.
+ Modifier : Jaehee ha (jaehee.ha@kaist.ac.kr)
  //TODO Are we need to delete a resource?
  //TODO name ID body가 000...인 node를 찾는 알고리즘이 필요함. (node list at highest level에서 찾으면 쉬움)
  //TODO List of locality representative nodes MUST be needed.
@@ -245,7 +248,7 @@ public class SkipNode implements SkipNodeInterface {
         lookupTable.setNodeListAtHighestLevel(getNodeListFromNeighborAtHighestLevel());
         lookupTable.addNodeIntoListAtHighestLevel(getIdentity(null));
         addNodeIntoListAtHighestLevelRecursively();
-        lookupTable.addNodeIntoMapRepLocalityNodes(getIdentity(null));
+        //lookupTable.addNodeIntoMapRepLocalityNodes(getIdentity(null));
 
         insertionLock.endInsertion();
     }
@@ -383,7 +386,7 @@ public class SkipNode implements SkipNodeInterface {
         }
         SkipNodeIdentity curr = (direction == 0) ? getLeftNode(level) : getRightNode(level);
         while(!curr.equals(LookupTable.EMPTY_NODE) && SkipNodeIdentity.commonBits(target, curr.getNameID()) <= level) {
-            logger.debug(getNumID().toString(16) + " is in findLadder loop at level " + level + " with " + curr.getNumID());
+            logger.debug(getNumID().toString(16) + " is in findLadder loop at level " + level + " with " + curr.getNumID().toString(16));
             // Try to find a new neighbor, but immediately return if the neighbor is locked.
             curr = (direction == 0) ? middleLayer.getLeftNode(false, curr.getAddress(), curr.getPort(), level)
                     : middleLayer.getRightNode(false, curr.getAddress(), curr.getPort(), level);
@@ -433,7 +436,18 @@ public class SkipNode implements SkipNodeInterface {
      */
     @Override
     public String getResource(String resourceKey) {
-        String resourceQueryResult = handleKeyValueMapStorageWithResourceKey(resourceKey, true, false, null);
+        String resourceQueryResult = null;
+        if (isUsingRedis) {
+            setJedisPool();
+            Jedis jedis = jedisPool.getResource();
+            resourceQueryResult = jedis.get(numID.toString(16));
+            logger.debug("Resource query result = " + resourceQueryResult);
+            jedis.close();
+        }
+        else if (!isUsingRedis && kvMap != null) {
+            resourceQueryResult = kvMap.get(resourceKey);
+            logger.debug("Resource query result = "+resourceQueryResult);
+        }
         return resourceQueryResult;
     }
 
@@ -494,7 +508,7 @@ public class SkipNode implements SkipNodeInterface {
         // If this is the node the search request is looking for, return its identity
         logger.debug("Handle resource by num ID: in "+ this.numID.toString(16)+" handler, key: " + numID.toString(16)+", value: "+resourceValue);
         if (numID.equals(this.numID)) {
-            return getIdentity(handleKeyValueMapStorageWithNumID(numID, isGettingResource, isSettingResource, resourceValue));
+            return getIdentity(handleMapStorageWithNumID(numID, isGettingResource, isSettingResource, resourceValue));
         }
         // Initialize the level to begin looking at
         int level = lookupTable.getNumLevels();
@@ -515,7 +529,7 @@ public class SkipNode implements SkipNodeInterface {
             // If the level is less than zero, then this node is the closest node to the numID being searched for from the right. Return.
             if (level < 0) {
 
-                return getIdentity(handleKeyValueMapStorageWithNumID(numID, isGettingResource, isSettingResource, resourceValue));
+                return getIdentity(handleMapStorageWithNumID(numID, isGettingResource, isSettingResource, resourceValue));
             }
             // Else, delegate the search to that node on the right
             SkipNodeIdentity delegateNode = lookupTable.getRight(level);
@@ -536,7 +550,7 @@ public class SkipNode implements SkipNodeInterface {
             // If the level is less than zero, then this node is the closest node to the numID being searched for from the left. Return.
             if (level < 0) {
 
-                return getIdentity(handleKeyValueMapStorageWithNumID(numID, isGettingResource, isSettingResource, resourceValue));
+                return getIdentity(handleMapStorageWithNumID(numID, isGettingResource, isSettingResource, resourceValue));
             }
             // Else, delegate the search to that node on the right
             SkipNodeIdentity delegateNode = lookupTable.getLeft(level);
@@ -555,7 +569,7 @@ public class SkipNode implements SkipNodeInterface {
      * @param isSettingResource
      * @param resourceValue
      */
-    private String handleKeyValueMapStorageWithNumID (BigInteger numID, boolean isGettingResource, boolean isSettingResource, String resourceValue) {
+    private String handleMapStorageWithNumID (BigInteger numID, boolean isGettingResource, boolean isSettingResource, String resourceValue) {
         String returnResourceQueryResult = null;
         if (isGettingResource && isUsingRedis) {
             setJedisPool();
@@ -563,36 +577,85 @@ public class SkipNode implements SkipNodeInterface {
             returnResourceQueryResult = jedis.get(numID.toString(16));
             logger.debug("Resource query result = "+returnResourceQueryResult);
             jedis.close();
+            if (returnResourceQueryResult == null) {
+                SkipNodeIdentity minDiffNodeId = getIdentity(null);
+                BigInteger minDiff = new BigInteger("ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",16);
+                for (SkipNodeIdentity i : lookupTable.getNodeListAtHighestLevel()) {
+                    BigInteger diff = i.getNumID().subtract(numID);
+                    diff = diff.abs();
+                    if (diff.compareTo(minDiff) == -1) {
+                        minDiffNodeId = i;
+                        minDiff = diff;
+                    }
+                }
+                logger.debug("Minimum different Node Num ID: " + minDiffNodeId.getNumID().toString(16));
+                SkipNodeIdentity response = middleLayer.getResource(minDiffNodeId.getAddress(), minDiffNodeId.getPort(), numID);
+                returnResourceQueryResult = response.getResourceQueryResult();
+            }
         }
         else if (isSettingResource && resourceValue != null && isUsingRedis) {
+            SkipNodeIdentity minDiffNodeId = getIdentity(null);
+            BigInteger minDiff = new BigInteger("ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",16);
             for (SkipNodeIdentity i : lookupTable.getNodeListAtHighestLevel()) {
                 if (i.getNumID().compareTo(this.numID) == 0) {
                     SkipNodeIdentity response = storeResource(numID.toString(16), resourceValue);
                     //TODO response is not used in this version.
                 }
                 else {
-                    SkipNodeIdentity response = middleLayer.storeResource(i.getAddress(), i.getPort(), numID, resourceValue);
-                    //TODO response is not used in this version.
+                    BigInteger diff = i.getNumID().subtract(numID);
+                    diff = diff.abs();
+                    if (diff.compareTo(minDiff) == -1) {
+                        minDiffNodeId = i;
+                        minDiff = diff;
+                    }
                 }
             }
+            logger.debug("Minimum different Node Num ID: " + minDiffNodeId.getNumID().toString(16));
+            SkipNodeIdentity response = middleLayer.storeResource(minDiffNodeId.getAddress(), minDiffNodeId.getPort(), numID, resourceValue);
+            //TODO response is not used in this version.
 
             returnResourceQueryResult = null;
         }
         else if (isGettingResource && !isUsingRedis && kvMap != null) {
             returnResourceQueryResult = kvMap.get(numID.toString(16));
+            if (returnResourceQueryResult == null) {
+                SkipNodeIdentity minDiffNodeId = getIdentity(null);
+                BigInteger minDiff = new BigInteger("ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",16);
+                for (SkipNodeIdentity i : lookupTable.getNodeListAtHighestLevel()) {
+                    BigInteger diff = i.getNumID().subtract(numID);
+                    diff = diff.abs();
+                    if (diff.compareTo(minDiff) == -1) {
+                        minDiffNodeId = i;
+                        minDiff = diff;
+                    }
+                }
+                logger.debug("Minimum different Node Num ID: " + minDiffNodeId.getNumID().toString(16));
+                SkipNodeIdentity response = middleLayer.getResource(minDiffNodeId.getAddress(), minDiffNodeId.getPort(), numID);
+                returnResourceQueryResult = response.getResourceQueryResult();
+            }
             logger.debug("Resource query result = "+returnResourceQueryResult);
         }
         else if (isSettingResource && !isUsingRedis && kvMap != null) {
+            SkipNodeIdentity minDiffNodeId = getIdentity(null);
+            BigInteger minDiff = new BigInteger("ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",16);
             for (SkipNodeIdentity i : lookupTable.getNodeListAtHighestLevel()) {
                 if (i.getNumID().compareTo(this.numID) == 0) {
                     SkipNodeIdentity response = storeResource(numID.toString(16), resourceValue);
                     //TODO response is not used in this version.
                 }
                 else {
-                    SkipNodeIdentity response = middleLayer.storeResource(i.getAddress(), i.getPort(), numID, resourceValue);
-                    //TODO response is not used in this version.
+                    BigInteger diff = i.getNumID().subtract(numID);
+                    diff = diff.abs();
+                    if (diff.compareTo(minDiff) == -1) {
+                        minDiffNodeId = i;
+                        minDiff = diff;
+                    }
                 }
             }
+            logger.debug("Minimum different Node Num ID: " + minDiffNodeId.getNumID().toString(16));
+            SkipNodeIdentity response = middleLayer.storeResource(minDiffNodeId.getAddress(), minDiffNodeId.getPort(), numID, resourceValue);
+            //TODO response is not used in this version.
+
             returnResourceQueryResult = null;
         }
         return returnResourceQueryResult;
@@ -607,7 +670,7 @@ public class SkipNode implements SkipNodeInterface {
      * @return The String
      */
     private String handleKeyValueMapStorageWithResourceKey (String resourceKey, boolean isGettingResource, boolean isSettingResource, String resourceValue) {
-        return handleKeyValueMapStorageWithNumID(new BigInteger(resourceKey, 16),isGettingResource,isSettingResource,resourceValue);
+        return handleMapStorageWithNumID(new BigInteger(resourceKey, 16),isGettingResource,isSettingResource,resourceValue);
     }
 
     /**
@@ -691,8 +754,8 @@ public class SkipNode implements SkipNodeInterface {
     private SearchResult handleResourceByNameID(String targetNameID, boolean isGettingResource, boolean isSettingResource, String resourceKey, String resourceValue) {
 
         logger.debug("Common bits between " + nameID + " and " + targetNameID + " is " + SkipNodeIdentity.commonBits(nameID, targetNameID));
-        if (nameID.equals(targetNameID) || SkipNodeIdentity.commonBits(nameID, targetNameID) == lookupTable.getNumLevels()) {
-            return new SearchResult(getIdentity(handleJedisWithNameID(isGettingResource, isSettingResource, resourceKey, resourceValue)));
+        if (nameID.equals(targetNameID) || SkipNodeIdentity.commonBits(nameID, targetNameID) >= lookupTable.getNumLevels()) {
+            return new SearchResult(getIdentity(handleMapStorageWithNameID(isGettingResource, isSettingResource, resourceKey, resourceValue)));
         }
         // If the node is not completely inserted yet, return a tentative identity.
         if (!isAvailable()) {
@@ -701,19 +764,7 @@ public class SkipNode implements SkipNodeInterface {
         // Find the level in which the search should be started from.
         int level = SkipNodeIdentity.commonBits(nameID, targetNameID);
         if (level < 0) {
-            return new SearchResult(getIdentity(handleJedisWithNameID(isGettingResource, isSettingResource, resourceKey, resourceValue)));
-        }
-
-        //TODO
-        if (isRepNodeOnly) {
-            SkipNodeIdentity repNode = lookupTable.getMapRepLocalityNodes().get(targetNameID);
-            if (repNode != null) {
-                logger.debug("Name ID: " +targetNameID+" "+repNode.getAddress()+":"+repNode.getPort() + " key: " + resourceKey);
-                return middleLayer.handleResourceByNameIDRecursive(repNode.getAddress(), repNode.getPort(), targetNameID, level, isGettingResource, isSettingResource, resourceKey, resourceValue);
-            } else {
-                logger.debug("Rep node is null");
-                return new SearchResult(getIdentity(null));
-            }
+            return new SearchResult(getIdentity(handleMapStorageWithNameID(isGettingResource, isSettingResource, resourceKey, resourceValue)));
         }
 
         // Initiate the search.
@@ -785,8 +836,8 @@ public class SkipNode implements SkipNodeInterface {
     @Override
     public SearchResult handleResourceByNameIDRecursive(String targetNameID, int level, boolean isGettingResource, boolean isSettingResource, String resourceKey, String resourceValue) {
         logger.debug("Handling resource by name ID: in "+this.numID+" handler, target name ID: "+ targetNameID + ", key: " + resourceKey + ", value: "+resourceValue);
-        if(nameID.equals(targetNameID) || SkipNodeIdentity.commonBits(nameID, targetNameID) == lookupTable.getNumLevels()) {
-            return new SearchResult(getIdentity(handleJedisWithNameID(isGettingResource, isSettingResource, resourceKey, resourceValue)));
+        if(nameID.equals(targetNameID) || SkipNodeIdentity.commonBits(nameID, targetNameID) >= lookupTable.getNumLevels()) {
+            return new SearchResult(getIdentity(handleMapStorageWithNameID(isGettingResource, isSettingResource, resourceKey, resourceValue)));
         }
         // Buffer contains the `most similar node` to return in case we cannot climb up anymore. At first, we try to set this to the
         // non null potential ladder.
@@ -799,11 +850,15 @@ public class SkipNode implements SkipNodeInterface {
             // Return the potential ladder as the result if it is the result we are looking for.
             if(potentialLeftLadder.getNameID().equals(targetNameID)) {
                 //TODO
-                return new SearchResult(potentialLeftLadder);
+
+                //return new SearchResult(potentialLeftLadder);
+                return middleLayer.handleResourceByNameIDRecursive(potentialLeftLadder.getAddress(), potentialLeftLadder.getPort(), targetNameID, level, isGettingResource, isSettingResource, resourceKey, resourceValue);
             }
             if(potentialRightLadder.getNameID().equals(targetNameID)) {
                 //TODO
-                return new SearchResult(potentialRightLadder);
+
+                //return new SearchResult(potentialRightLadder);
+                return middleLayer.handleResourceByNameIDRecursive(potentialRightLadder.getAddress(), potentialRightLadder.getPort(), targetNameID, level, isGettingResource, isSettingResource, resourceKey, resourceValue);
             }
             // Expand the search window on the level.
             if(!potentialLeftLadder.equals(LookupTable.EMPTY_NODE)) {
@@ -827,14 +882,17 @@ public class SkipNode implements SkipNodeInterface {
             // If we have expanded more than the length of the level, then return the most similar node (buffer).
             if(potentialLeftLadder.equals(LookupTable.EMPTY_NODE) && potentialRightLadder.equals(LookupTable.EMPTY_NODE)) {
                 //TODO
-                return new SearchResult(buffer);
+
+                //return new SearchResult(buffer);
+                return middleLayer.handleResourceByNameIDRecursive(buffer.getAddress(), buffer.getPort(), targetNameID, level, isGettingResource, isSettingResource, resourceKey, resourceValue);
             }
         }
         //TODO
-        return new SearchResult(buffer);
+        //return new SearchResult(buffer);
+        return middleLayer.handleResourceByNameIDRecursive(buffer.getAddress(), buffer.getPort(), targetNameID, level, isGettingResource, isSettingResource, resourceKey, resourceValue);
     }
 
-    private String handleJedisWithNameID(boolean isGettingResource, boolean isSettingResource, String resourceKey, String resourceValue) {
+    private String handleMapStorageWithNameID(boolean isGettingResource, boolean isSettingResource, String resourceKey, String resourceValue) {
         String returnResourceQueryResult = null;
         if (isGettingResource && resourceKey != null && isUsingRedis) {
             setJedisPool();
@@ -842,35 +900,85 @@ public class SkipNode implements SkipNodeInterface {
             returnResourceQueryResult = jedis.get(resourceKey);
             logger.debug("Resource query result = "+returnResourceQueryResult);
             jedis.close();
+            if (returnResourceQueryResult == null) {
+                SkipNodeIdentity minDiffNodeId = getIdentity(null);
+                BigInteger minDiff = new BigInteger("ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",16);
+
+                for (SkipNodeIdentity i : lookupTable.getNodeListAtHighestLevel()) { //search from replication
+                    BigInteger diff = i.getNumID().subtract(new BigInteger(resourceKey,16));
+                    diff = diff.abs();
+                    if (diff.compareTo(minDiff) == -1) {
+                        minDiffNodeId = i;
+                        minDiff = diff;
+                    }
+                }
+                logger.debug("Minimum different Node Num ID: " + minDiffNodeId.getNumID().toString(16));
+                SkipNodeIdentity response = middleLayer.getResource(minDiffNodeId.getAddress(), minDiffNodeId.getPort(), new BigInteger(resourceKey, 16));
+                returnResourceQueryResult = response.getResourceQueryResult();
+            }
         }
         else if (isSettingResource && resourceKey != null && resourceValue != null && isUsingRedis) {
+            SkipNodeIdentity minDiffNodeId = getIdentity(null);
+            BigInteger minDiff = new BigInteger("ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",16);
             for (SkipNodeIdentity i : lookupTable.getNodeListAtHighestLevel()) { // replication
                 if (i.getNumID().compareTo(this.numID) == 0) {
                     SkipNodeIdentity response = storeResource(resourceKey, resourceValue);
                     //TODO response is not used in this version.
                 }
                 else {
-                    SkipNodeIdentity response = middleLayer.storeResource(i.getAddress(), i.getPort(), new BigInteger(resourceKey, 16), resourceValue);
-                    //TODO response is not used in this version.
+                    BigInteger diff = i.getNumID().subtract(new BigInteger(resourceKey,16));
+                    diff = diff.abs();
+                    if (diff.compareTo(minDiff) == -1) {
+                        minDiffNodeId = i;
+                        minDiff = diff;
+                    }
                 }
             }
+            logger.debug("Minimum different Node Num ID: " + minDiffNodeId.getNumID().toString(16));
+            SkipNodeIdentity response = middleLayer.storeResource(minDiffNodeId.getAddress(), minDiffNodeId.getPort(), new BigInteger(resourceKey, 16), resourceValue);
+            //TODO response is not used in this version.
             returnResourceQueryResult = null;
         }
         else if (isGettingResource && !isUsingRedis && kvMap != null) {
             returnResourceQueryResult = kvMap.get(resourceKey);
+            if (returnResourceQueryResult == null) {
+                SkipNodeIdentity minDiffNodeId = getIdentity(null);
+                BigInteger minDiff = new BigInteger("ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",16);
+
+                for (SkipNodeIdentity i : lookupTable.getNodeListAtHighestLevel()) { //search from replication
+                    BigInteger diff = i.getNumID().subtract(new BigInteger(resourceKey,16));
+                    diff = diff.abs();
+                    if (diff.compareTo(minDiff) == -1) {
+                        minDiffNodeId = i;
+                        minDiff = diff;
+                    }
+                }
+                logger.debug("Minimum different Node Num ID: " + minDiffNodeId.getNumID().toString(16));
+                SkipNodeIdentity response = middleLayer.getResource(minDiffNodeId.getAddress(), minDiffNodeId.getPort(), new BigInteger(resourceKey, 16));
+                returnResourceQueryResult = response.getResourceQueryResult();
+            }
             logger.debug("Resource query result = "+returnResourceQueryResult);
         }
         else if (isSettingResource && resourceKey != null && resourceValue != null && !isUsingRedis && kvMap != null) {
+            SkipNodeIdentity minDiffNodeId = getIdentity(null);
+            BigInteger minDiff = new BigInteger("ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",16);
             for (SkipNodeIdentity i : lookupTable.getNodeListAtHighestLevel()) { // replication
                 if (i.getNumID().compareTo(this.numID) == 0) {
                     SkipNodeIdentity response = storeResource(resourceKey, resourceValue);
                     //TODO response is not used in this version.
                 }
                 else {
-                    SkipNodeIdentity response = middleLayer.storeResource(i.getAddress(), i.getPort(), new BigInteger(resourceKey, 16), resourceValue);
-                    //TODO response is not used in this version.
+                    BigInteger diff = i.getNumID().subtract(new BigInteger(resourceKey,16));
+                    diff = diff.abs();
+                    if (diff.compareTo(minDiff) == -1) {
+                        minDiffNodeId = i;
+                        minDiff = diff;
+                    }
                 }
             }
+            logger.debug("Minimum different Node Num ID: " + minDiffNodeId.getNumID().toString(16));
+            SkipNodeIdentity response = middleLayer.storeResource(minDiffNodeId.getAddress(), minDiffNodeId.getPort(), new BigInteger(resourceKey, 16), resourceValue);
+            //TODO response is not used in this version.
         }
         return  returnResourceQueryResult;
     }

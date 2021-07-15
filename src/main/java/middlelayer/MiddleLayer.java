@@ -14,6 +14,11 @@ package middlelayer;
  Added getNodeListAtHighestLevel(), getFirstNodeAtHighestLevel(), and getNodeListByNameID().
  Added getLeftNodeAndAddNodeAtHighestLevel() and getRightNodeAndAddNodeAtHighestLevel().
  Modifier : Jaehee ha (jaehee.ha@kaist.ac.kr)
+
+ Rev. history : 2021-07-15
+ Version : 1.1.8
+ Added lowest diff get/store method.
+ Modifier : Jaehee ha (jaehee.ha@kaist.ac.kr)
  */
 /* -------------------------------------------------------- */
 
@@ -184,6 +189,9 @@ public class MiddleLayer {
             case StoreResourceByNumIDRequest:
                 identity = overlay.storeResource(((StoreResourceByNumIDRequest) request).targetNumID.toString(16), ((StoreResourceByNumIDRequest) request).resourceValue);
                 return new IdentityResponse(identity);
+            case GetResourceByNumIDRequest:
+                identity = overlay.getIdentity(overlay.getResource(((GetResourceByNumIDRequest) request).targetNumID.toString(16)));
+                return new IdentityResponse(identity);
             case IsAvailable:
                 return new BooleanResponse(overlay.isAvailable());
             default:
@@ -219,6 +227,11 @@ public class MiddleLayer {
 
     public SkipNodeIdentity storeResource(String destinationAddress, int port, BigInteger numID, String resourceValue) {
         Response response = this.send(destinationAddress, port, new StoreResourceByNumIDRequest(numID, resourceValue));
+        return ((IdentityResponse) response).identity;
+    }
+
+    public SkipNodeIdentity getResource(String destinationAddress, int port, BigInteger numID) {
+        Response response = this.send(destinationAddress, port, new GetResourceByNumIDRequest(numID));
         return ((IdentityResponse) response).identity;
     }
 

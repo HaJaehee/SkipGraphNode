@@ -1199,6 +1199,9 @@ class DHTServer {
                 isHit = true;
                 searchResult = valueLA;
             }
+
+            // Deprecates recursive search by expanding locality regions.
+            /*
             else { //Failed
                 int targetPrefixLength = LOCALITY_AWARE_LEVEL;
                 while ((valueLA == null || valueLA.equals("")) && targetPrefixLength>=0) {
@@ -1252,7 +1255,7 @@ class DHTServer {
                         targetPrefixLength --;
                     }
                 }
-            }
+            }*/
         }
         if (!isHit && !hashed.equals(input) && ipAddressAwareNode != null) { //Locality-aware approach searching failed
             //Search entry with network address of IP address on IP address approach
@@ -1930,8 +1933,11 @@ class DHTServer {
 
         jsonString.append("\""+LOCALITY_ID+"\" : \""+ localityID + "\",");
 
+        String[] lidList = {localityID};
         if (jobj != null) {
-            jsonString.append("\""+LID_LIST+"\":"+extendLidList(jobj)+"}");
+            String lidJArr = extendLidList(jobj);
+            jsonString.append("\""+LID_LIST+"\":"+lidJArr+"}");
+            lidList = lidJArr.replaceAll("\\[","").replaceAll("\\]","").replaceAll("\"","").split(",");
         }
         else {
             jsonString.append("\""+LID_LIST+"\":[\""+localityID+"\"]}");
@@ -1945,7 +1951,9 @@ class DHTServer {
         //TODO
         if(logging)System.out.println("key: "+firstSHA+", data: "+jsonString.toString());
         if(localityAwareNode != null && localityID != null) {
-            localityAwareNode.storeResourceByNameID(localityID, firstSHA, jsonString.toString());
+            for (String locID : lidList) {
+                localityAwareNode.storeResourceByNameID(locID, firstSHA, jsonString.toString());
+            }
         }
         if(ipAddressAwareNode != null) {
             ipAddressAwareNode.storeResourceByResourceKey(firstSHA, jsonString.toString());
@@ -1979,8 +1987,11 @@ class DHTServer {
 
         jsonString.append("\""+LOCALITY_ID+"\" : \""+ localityID + "\",");
 
+        String[] lidList = {localityID};
         if (jobj != null) {
-            jsonString.append("\""+LID_LIST+"\":"+extendLidList(jobj)+"}");
+            String lidJArr = extendLidList(jobj);
+            jsonString.append("\""+LID_LIST+"\":"+lidJArr+"}");
+            lidList = lidJArr.replaceAll("\\[","").replaceAll("\\]","").replaceAll("\"","").split(",");
         }
         else {
             jsonString.append("\""+LID_LIST+"\":[\""+localityID+"\"]}");
@@ -1992,7 +2003,9 @@ class DHTServer {
         //TODO
        if(logging)System.out.println("key: "+firstSHA+", data: "+jsonString.toString());
         if(localityAwareNode != null && localityID != null) {
-            localityAwareNode.storeResourceByNameID(localityID, firstSHA, jsonString.toString());
+            for (String locID : lidList) {
+                localityAwareNode.storeResourceByNameID(locID, firstSHA, jsonString.toString());
+            }
         }
         if(ipAddressAwareNode != null) {
             ipAddressAwareNode.storeResourceByResourceKey(firstSHA, jsonString.toString());
@@ -2053,8 +2066,11 @@ class DHTServer {
 
         jsonString.append("\""+LOCALITY_ID+"\" : \""+ localityID + "\",");
 
+        String[] lidList = {localityID};
         if (jobj != null) {
-            jsonString.append("\""+LID_LIST+"\":"+extendLidList(jobj)+"}");
+            String lidJArr = extendLidList(jobj);
+            jsonString.append("\""+LID_LIST+"\":"+lidJArr+"}");
+            lidList = lidJArr.replaceAll("\\[","").replaceAll("\\]","").replaceAll("\"","").split(",");
         }
         else {
             jsonString.append("\""+LID_LIST+"\":[\""+localityID+"\"]}");
@@ -2065,7 +2081,9 @@ class DHTServer {
         //TODO
         if(logging)System.out.println("key: "+firstSHA+", data: "+jsonString.toString());
         if(localityAwareNode != null && localityID != null) {
-            localityAwareNode.storeResourceByNameID(localityID, firstSHA, jsonString.toString());
+            for (String locID : lidList) {
+                localityAwareNode.storeResourceByNameID(locID, firstSHA, jsonString.toString());
+            }
         }
         if (ipAddressAwareNode != null) {
             ipAddressAwareNode.storeResourceByResourceKey(firstSHA, jsonString.toString());

@@ -4,7 +4,6 @@ import skipnode.SkipNodeIdentity;
 
 import java.math.BigInteger;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 
 public interface LookupTable {
@@ -121,7 +120,4 @@ public interface LookupTable {
 
     ArrayList<SkipNodeIdentity> getNodeListAtHighestLevel ();
 
-    void addNodeIntoMapRepLocalityNodes (SkipNodeIdentity id);
-
-    HashMap<String, SkipNodeIdentity> getMapRepLocalityNodes ();
 }

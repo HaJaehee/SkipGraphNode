@@ -41,5 +41,6 @@ public enum RequestType {
     GetNodeListAtHighestLevel,
     GetLeftNodeAndAddNodeAtHighestLevel,
     GetRightNodeAndAddNodeAtHighestLevel,
-    StoreResourceByNumIDRequest
+    StoreResourceByNumIDRequest,
+    GetResourceByNumIDRequest
 }

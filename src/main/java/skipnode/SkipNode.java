@@ -850,13 +850,13 @@ public class SkipNode implements SkipNodeInterface {
             // Return the potential ladder as the result if it is the result we are looking for.
             if(potentialLeftLadder.getNameID().equals(targetNameID)) {
                 //TODO
-
+                //Infinity loop
                 //return new SearchResult(potentialLeftLadder);
                 return middleLayer.handleResourceByNameIDRecursive(potentialLeftLadder.getAddress(), potentialLeftLadder.getPort(), targetNameID, level, isGettingResource, isSettingResource, resourceKey, resourceValue);
             }
             if(potentialRightLadder.getNameID().equals(targetNameID)) {
                 //TODO
-
+                //Infinity loop
                 //return new SearchResult(potentialRightLadder);
                 return middleLayer.handleResourceByNameIDRecursive(potentialRightLadder.getAddress(), potentialRightLadder.getPort(), targetNameID, level, isGettingResource, isSettingResource, resourceKey, resourceValue);
             }
@@ -882,12 +882,13 @@ public class SkipNode implements SkipNodeInterface {
             // If we have expanded more than the length of the level, then return the most similar node (buffer).
             if(potentialLeftLadder.equals(LookupTable.EMPTY_NODE) && potentialRightLadder.equals(LookupTable.EMPTY_NODE)) {
                 //TODO
-
+                //Infinity loop
                 //return new SearchResult(buffer);
                 return middleLayer.handleResourceByNameIDRecursive(buffer.getAddress(), buffer.getPort(), targetNameID, level, isGettingResource, isSettingResource, resourceKey, resourceValue);
             }
         }
         //TODO
+        //Infinity loop
         //return new SearchResult(buffer);
         return middleLayer.handleResourceByNameIDRecursive(buffer.getAddress(), buffer.getPort(), targetNameID, level, isGettingResource, isSettingResource, resourceKey, resourceValue);
     }

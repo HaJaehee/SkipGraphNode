@@ -155,12 +155,14 @@ public interface SkipNodeInterface {
 
     /**
      * TODO
-     * @param targetNameID
+     * @param isGettingResource
+     * @param isSettingResource
      * @param resourceKey
      * @param resourceValue
-     * @return The SkipNodeIdentity
+     * @return
      */
-    SearchResult storeResourceReplicationsByNameID(String targetNameID, String resourceKey, String resourceValue);
+    String handleMapStorageWithNameID (boolean isGettingResource, boolean isSettingResource, String resourceKey, String resourceValue);
+
 
     /**
      * TODO

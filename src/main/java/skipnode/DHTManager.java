@@ -1194,7 +1194,7 @@ class DHTServer {
                 System.out.println("Locality ID: "+localityID);
                 System.out.println("Key: "+hashed);
             }
-            String valueLA = localityAwareNode.getResource(hashed); //Search its locality.
+            String valueLA = localityAwareNode.getResourceByNameID(localityID, hashed); //Search its locality.
             if (valueLA != null && !valueLA.equals("")) { //Hit
                 isHit = true;
                 searchResult = valueLA;
@@ -1954,6 +1954,7 @@ class DHTServer {
             for (String locID : lidList) {
                 localityAwareNode.storeResourceByNameID(locID, firstSHA, jsonString.toString());
             }
+            localityAwareNode.storeResourceByNumID(new BigInteger(firstSHA, 16), jsonString.toString());
         }
         if(ipAddressAwareNode != null) {
             ipAddressAwareNode.storeResourceByResourceKey(firstSHA, jsonString.toString());
@@ -2006,6 +2007,7 @@ class DHTServer {
             for (String locID : lidList) {
                 localityAwareNode.storeResourceByNameID(locID, firstSHA, jsonString.toString());
             }
+            localityAwareNode.storeResourceByNumID(new BigInteger(firstSHA, 16), jsonString.toString());
         }
         if(ipAddressAwareNode != null) {
             ipAddressAwareNode.storeResourceByResourceKey(firstSHA, jsonString.toString());
@@ -2084,6 +2086,7 @@ class DHTServer {
             for (String locID : lidList) {
                 localityAwareNode.storeResourceByNameID(locID, firstSHA, jsonString.toString());
             }
+            localityAwareNode.storeResourceByNumID(new BigInteger(firstSHA, 16), jsonString.toString());
         }
         if (ipAddressAwareNode != null) {
             ipAddressAwareNode.storeResourceByResourceKey(firstSHA, jsonString.toString());

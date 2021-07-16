@@ -49,10 +49,10 @@ public class ConcurrentLookupTable implements LookupTable {
     }
 
     public ConcurrentLookupTable(int numLevels) {
-        this.numLevels = numLevels;
+        this.numLevels = numLevels+1;
         lock = new ReentrantReadWriteLock(true);
-        nodes = new ArrayList<>(2*numLevels);
-        for(int i = 0; i < 2 * numLevels; i++){
+        nodes = new ArrayList<>(2*this.numLevels);
+        for(int i = 0; i < 2 * this.numLevels; i++){
             nodes.add(i, LookupTable.EMPTY_NODE);
         }
         nodesAtHighestLevel = new ArrayList<SkipNodeIdentity>();

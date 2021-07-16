@@ -5,12 +5,6 @@ package underlay.packets;
  File name : RequestType.java
  Rev. history : 2021-03-25
  Version : 1.0.3
- Added GetNodeListAtHighestLevel, GetLeftNodeAndAddNodeAtHighestLevel and GetRightNodeAndAddNodeAtHighestLevel .
- Modifier : Jaehee ha (jaehee.ha@kaist.ac.kr)
-
- Rev. history : 2021-03-27
- Version : 1.1.0
- Added StoreResourceByNumIDRequest.
  Modifier : Jaehee ha (jaehee.ha@kaist.ac.kr)
  */
 /* -------------------------------------------------------- */
@@ -42,5 +36,6 @@ public enum RequestType {
     GetLeftNodeAndAddNodeAtHighestLevel,
     GetRightNodeAndAddNodeAtHighestLevel,
     StoreResourceByNumIDRequest,
-    GetResourceByNumIDRequest
+    GetResourceByNumIDRequest,
+    HandleMapStorageWithRsrcKeyRequest
 }

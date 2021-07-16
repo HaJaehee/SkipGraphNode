@@ -192,6 +192,12 @@ public class MiddleLayer {
             case GetResourceByNumIDRequest:
                 identity = overlay.getIdentity(overlay.getResource(((GetResourceByNumIDRequest) request).targetNumID.toString(16)));
                 return new IdentityResponse(identity);
+            case HandleMapStorageWithRsrcKeyRequest:
+                identity = overlay.getIdentity(overlay.handleMapStorageWithNameID(((HandleMapStorageWithRsrcKeyRequest) request).isGettingResource,
+                        ((HandleMapStorageWithRsrcKeyRequest) request).isSettingResource,
+                        ((HandleMapStorageWithRsrcKeyRequest) request).resourceKey,
+                        ((HandleMapStorageWithRsrcKeyRequest) request).resourceValue));
+                return new IdentityResponse(identity);
             case IsAvailable:
                 return new BooleanResponse(overlay.isAvailable());
             default:
@@ -381,5 +387,10 @@ public class MiddleLayer {
             System.exit(1);
         }
         return ((BooleanResponse) response).answer;
+    }
+
+    public SkipNodeIdentity handleMapStorageWithRsrcKey(String destinationAddress, int port, boolean isGettingResource, boolean isSettingResource, String resourceKey, String resourceValue){
+        Response response = send(destinationAddress, port, new HandleMapStorageWithRsrcKeyRequest(isGettingResource, isSettingResource, resourceKey, resourceValue));
+        return ((IdentityResponse) response).identity;
     }
 }

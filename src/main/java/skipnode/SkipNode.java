@@ -845,8 +845,8 @@ public class SkipNode implements SkipNodeInterface {
         SkipNodeIdentity potentialRightLadder = getIdentity(null);
         SkipNodeIdentity buffer = (!potentialLeftLadder.equals(LookupTable.EMPTY_NODE)) ? potentialLeftLadder : potentialRightLadder;
         // This loop will execute and we expand our search window until a ladder is found either on the right or the left.
-        while(SkipNodeIdentity.commonBits(targetNameID, potentialLeftLadder.getNameID()) <= level
-                && SkipNodeIdentity.commonBits(targetNameID, potentialRightLadder.getNameID()) <= level) {
+        while(SkipNodeIdentity.commonBits(potentialLeftLadder.getNameID(), targetNameID) <= level
+                && SkipNodeIdentity.commonBits(potentialRightLadder.getNameID(), targetNameID) <= level) {
             // Return the potential ladder as the result if it is the result we are looking for.
             if(potentialLeftLadder.getNameID().equals(targetNameID) || SkipNodeIdentity.commonBits(potentialLeftLadder.getNameID(), targetNameID) >= lookupTable.getNumLevels()-1) {
                 //TODO

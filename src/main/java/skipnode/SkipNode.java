@@ -870,11 +870,11 @@ public class SkipNode implements SkipNodeInterface {
                         level, 1, targetNameID);
             }
             // Try to climb up on the either ladder.
-            if(SkipNodeIdentity.commonBits(targetNameID, potentialRightLadder.getNameID()) > level) {
-                level = SkipNodeIdentity.commonBits(targetNameID, potentialRightLadder.getNameID());
+            if(SkipNodeIdentity.commonBits(potentialRightLadder.getNameID(), targetNameID) > level) {
+                level = SkipNodeIdentity.commonBits(potentialRightLadder.getNameID(), targetNameID);
                 return middleLayer.handleResourceByNameIDRecursive(potentialRightLadder.getAddress(), potentialRightLadder.getPort(), targetNameID, level, isGettingResource, isSettingResource, resourceKey, resourceValue);
-            } else if(SkipNodeIdentity.commonBits(targetNameID, potentialLeftLadder.getNameID()) > level) {
-                level = SkipNodeIdentity.commonBits(targetNameID, potentialLeftLadder.getNameID());
+            } else if(SkipNodeIdentity.commonBits(potentialLeftLadder.getNameID(), targetNameID) > level) {
+                level = SkipNodeIdentity.commonBits(potentialLeftLadder.getNameID(), targetNameID);
                 return middleLayer.handleResourceByNameIDRecursive(potentialLeftLadder.getAddress(), potentialLeftLadder.getPort(), targetNameID, level, isGettingResource, isSettingResource, resourceKey, resourceValue);
             }
             // If we have expanded more than the length of the level, then return the most similar node (buffer).

@@ -758,7 +758,7 @@ public class SkipNode implements SkipNodeInterface {
      */
     @Override
     public SearchResult handleResourceByNameIDRecursive(String targetNameID, int level, boolean isGettingResource, boolean isSettingResource, String resourceKey, String resourceValue) {
-        logger.debug("Handling resource by name ID: in "+this.numID+" handler, target name ID: "+ targetNameID + ", key: " + resourceKey + ", value: "+resourceValue);
+        logger.debug("Handling resource by name ID: in "+this.numID.toString(16)+" handler, target name ID: "+ targetNameID + ", key: " + resourceKey + ", value: "+resourceValue);
         if(nameID.equals(targetNameID) || SkipNodeIdentity.commonBits(nameID, targetNameID) >= lookupTable.getNumLevels()-1) {
             return new SearchResult(getIdentity(handleMapStorageWithNameID(isGettingResource, isSettingResource, resourceKey, resourceValue)));
         }

@@ -801,11 +801,11 @@ public class SkipNode implements SkipNodeInterface {
             // Try to climb up on the either ladder.
             if(SkipNodeIdentity.commonBits(potentialRightLadder.getNameID(), targetNameID) > level) {
                 level = SkipNodeIdentity.commonBits(potentialRightLadder.getNameID(), targetNameID);
-                logger.debug("Climbing up. Level: "+level+"Handling resource by right ladder name ID: in "+potentialRightLadder.getNameID()+" handler, target name ID: "+ targetNameID + ", key: " + resourceKey + ", value: "+resourceValue);
+                logger.debug("Climbing up. Level: "+level+" Handling resource by right ladder name ID: in "+potentialRightLadder.getNameID()+" handler, target name ID: "+ targetNameID + ", key: " + resourceKey + ", value: "+resourceValue);
                 return middleLayer.handleResourceByNameIDRecursive(potentialRightLadder.getAddress(), potentialRightLadder.getPort(), targetNameID, level, isGettingResource, isSettingResource, resourceKey, resourceValue);
             } else if(SkipNodeIdentity.commonBits(potentialLeftLadder.getNameID(), targetNameID) > level) {
                 level = SkipNodeIdentity.commonBits(potentialLeftLadder.getNameID(), targetNameID);
-                logger.debug("Climbing up. Level: "+level+"Handling resource by left ladder name ID: in "+potentialLeftLadder.getNameID()+" handler, target name ID: "+ targetNameID + ", key: " + resourceKey + ", value: "+resourceValue);
+                logger.debug("Climbing up. Level: "+level+" Handling resource by left ladder name ID: in "+potentialLeftLadder.getNameID()+" handler, target name ID: "+ targetNameID + ", key: " + resourceKey + ", value: "+resourceValue);
                 return middleLayer.handleResourceByNameIDRecursive(potentialLeftLadder.getAddress(), potentialLeftLadder.getPort(), targetNameID, level, isGettingResource, isSettingResource, resourceKey, resourceValue);
             }
             // If we have expanded more than the length of the level, then return the most similar node (buffer).

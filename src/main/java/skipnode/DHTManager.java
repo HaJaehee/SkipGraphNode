@@ -363,7 +363,7 @@ class DHTManagerHandler extends SimpleChannelInboundHandler<DatagramPacket> {
     private static final byte OPCODE_UPDATE_IP = 3;
     private static final byte OPCODE_NEW_APP = 4;
     private static final byte OPCODE_NEW_CTN = 5;
-    private static final byte OPCODE_DUMP_MOBIL_INFO = 66;
+    private static final byte OPCODE_DUMP_MOBIL_INFO = 102;
 
     private static final int LM_HDR_LENGTH = 32;
 
@@ -389,6 +389,8 @@ class DHTManagerHandler extends SimpleChannelInboundHandler<DatagramPacket> {
         this.bClient = bClient;
         this.nodeIndex = nodeIndex;
         this.skipGraphServer = skipGraphServer;
+
+
 
         //210611 disabled
         /*
@@ -486,13 +488,21 @@ class DHTManagerHandler extends SimpleChannelInboundHandler<DatagramPacket> {
 
         String sessionID = "";
         StringBuffer log = new StringBuffer();
-        if(logFileOut) {
 
-            //TODO session ID is weired
-            sessionID = String.format("%8s",new BigInteger(""+rand.nextInt()).toString(16)).replace(" ","0");
-            if(logging) System.out.println("New session "+sessionID);
-            log.append("sessionID,opCode,startTime,endTime\n");
-            log.append(sessionID+",");
+
+        if(logFileOut) {
+            // log file append
+            File file = new File("log-"+DHTManager.IPADDR+".csv");
+            if(!file.exists()) {
+                FileWriter fw = null;
+                try {
+                    fw = new FileWriter("log-" + DHTManager.IPADDR + ".csv", true);
+                    fw.write("sessionID,opCode,startTime,endTime,diff\n");
+                    fw.close();
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            }
         }
 
         byte opCode = payload.readByte();
@@ -511,7 +521,51 @@ class DHTManagerHandler extends SimpleChannelInboundHandler<DatagramPacket> {
             if(logging)System.out.println("opCode 0 will be supported soon.");
 
         } else if (opCode == OPCODE_DUMP_MOBIL_INFO){
+            if(logging)System.out.println("opCode 102: Dump many Host IPs into DHT server with Object IDs.");
+            String ipField[] = {"10","0","0","0"};
+            int inc = 0;
+            for (int ip1 = switchNum*16 ; ip1 < (switchNum+1)*16 && inc < DUMP_NUM ; ip1++) {
+                ipField[1] = ip1+"";
+                for (int ip2 = 0 ; ip2 < 256 && inc < DUMP_NUM  ; ip2++) {
+                    ipField[2] = ip2+"";
+                    for (int ip3 = 3 ; ip3 < 256 && inc < DUMP_NUM ; ip3++, inc++) {
+                        ipField[3] = ip3+"";
 
+                        StringBuilder jsonString = new StringBuilder();
+                        String strData = "";
+                        for (int i = 0; i < ipField.length; i++)
+                            strData += String.format("%02x", Integer.parseInt(ipField[i]));
+
+
+                        jsonString.append("{ \"" + this.skipGraphServer.VISITING_IP + "\" : \"" + strData + "\",");
+
+
+                        strData = "";
+                        String[] switchIP = DHTManager.IPADDR.split("\\.");
+                        for (int i = 0; i < switchIP.length; i++)
+                            strData += String.format("%02x", Integer.parseInt(switchIP[i]));
+
+                        jsonString.append("\"" + this.skipGraphServer.ES_IP + "\" : \"" + strData + "\", ");
+
+                        if (this.skipGraphServer.localityID != null) {
+                            jsonString.append("\"" + this.skipGraphServer.LOCALITY_ID + "\" : \"" + this.skipGraphServer.localityID + "\",");
+                            jsonString.append("\"" + this.skipGraphServer.LID_LIST + "\":[\"" + this.skipGraphServer.localityID + "\"]}");
+                        }
+
+                        //TODO LID_LIST
+                        String firstSHA = this.skipGraphServer.sha256(ipField[0]+"."+ipField[1]+"."+ipField[2]+"."+ipField[3]);
+
+                        //TODO
+                        if (logging) System.out.println("key: " + firstSHA + ", data: " + jsonString.toString());
+                        if (this.skipGraphServer.localityAwareNode != null && this.skipGraphServer.localityID != null) {
+                            this.skipGraphServer.localityAwareNode.storeResource(firstSHA, jsonString.toString());
+                        }
+                        if (this.skipGraphServer.ipAddressAwareNode != null) {
+                            this.skipGraphServer.ipAddressAwareNode.storeResource(firstSHA, jsonString.toString());
+                        }
+                    }
+                }
+            }
         }
 
 
@@ -551,9 +605,21 @@ class DHTManagerHandler extends SimpleChannelInboundHandler<DatagramPacket> {
                         .substring(1));
             }
 
-            if(logFileOut) log.append("OPCODE_GET_IP,"+System.currentTimeMillis()+",");
+            long startTime = 0;
+            long endTime = 0;
+            if(logFileOut) {
+                //TODO session ID is weired
+                sessionID = String.format("%08x",rand.nextInt(2147483647));
+                if(logging) System.out.println("New session "+sessionID);
+                log.append(sessionID+",");
+                startTime = System.currentTimeMillis();
+                log.append("OPCODE_GET_IP,"+startTime+",");
+            }
             skipGraphServer.get(opCode, sb.toString(), switchNum, byteHostIP, strDig);
-            if(logFileOut) log.append(System.currentTimeMillis()+"\n");
+            if(logFileOut) {
+                endTime = System.currentTimeMillis();
+                log.append(endTime+","+(endTime-startTime)+"\n");
+            }
 
             //---------------client example
 //			String opCode = OPCODE_GET_IP;
@@ -584,11 +650,22 @@ class DHTManagerHandler extends SimpleChannelInboundHandler<DatagramPacket> {
 
             if(logging)System.out.printf("[Node %d] Storing the pair: (Host IP=%s, Switch IP=%s)\n", nodeIndex,strIP,strSWIP);
 
-            if(logFileOut) log.append("OPCODE_INFORM_CONNECTION,"+System.currentTimeMillis()+",");
+            long startTime = 0;
+            long endTime = 0;
+            if(logFileOut) {
+                //TODO session ID is weired
+                sessionID = String.format("%08x",rand.nextInt(2147483647));
+                if(logging) System.out.println("New session "+sessionID);
+                log.append(sessionID+",");
+                startTime = System.currentTimeMillis();
+                log.append("OPCODE_INFORM_CONNECTION,"+startTime+",");
+            }
             JsonObject jobj = skipGraphServer.get(strIP);
             skipGraphServer.store(strIP, byteHostIP, byteSwitchIP, jobj);
-            if(logFileOut) log.append(System.currentTimeMillis()+"\n");
-
+            if(logFileOut) {
+                endTime = System.currentTimeMillis();
+                log.append(endTime+","+(endTime-startTime)+"\n");
+            }
 
             byte[] sendBuf = new byte[42];
             sendBuf[0] = OPCODE_UPDATE_IP;
@@ -668,10 +745,23 @@ class DHTManagerHandler extends SimpleChannelInboundHandler<DatagramPacket> {
                 System.out.printf("[Node %d] Storing the pair: (Original Host IP=%s, Port Number=%s, New Host IP=%s, New Edge Switch IP=%s)\n", nodeIndex, strHomeTargetHostIP, strPortNumber, strVisitingTargetHostIP, strVisitingESIP);
             }
 
-            if(logFileOut) log.append("OPCODE_APP_MOBILITY,"+System.currentTimeMillis()+",");
+
+            long startTime = 0;
+            long endTime = 0;
+            if(logFileOut) {
+                //TODO session ID is weired
+                sessionID = String.format("%08x",rand.nextInt(2147483647));
+                if(logging) System.out.println("New session "+sessionID);
+                log.append(sessionID+",");
+                startTime = System.currentTimeMillis();
+                log.append("OPCODE_APP_MOBILITY,"+startTime+",");
+            }
             JsonObject jobj = skipGraphServer.get(strHomeTargetHostIP);
             skipGraphServer.store(strHomeTargetHostIP+strPortNumber, strVisitingTargetHostIP+strPortNumber, byteVisitingTargetHostIP, byteVisitingESIP, byteHomeTargetHostIP, jobj);
-            if(logFileOut) log.append(System.currentTimeMillis()+"\n");
+            if(logFileOut) {
+                endTime = System.currentTimeMillis();
+                log.append(endTime+","+(endTime-startTime)+"\n");
+            }
 
             byte[] sendBuf = new byte[48];
 
@@ -790,10 +880,22 @@ class DHTManagerHandler extends SimpleChannelInboundHandler<DatagramPacket> {
                 System.out.printf("[Node %d] Storing the pair: (Original Cnt IP=%s, New Ctn IP=%s, New Host IP=%s, New Edge Switch IP=%s)\n", nodeIndex, strHomeCTIP, strVisitingCTIP, strVisitingTargetHostIP, strVisitingESIP);
             }
 
-            if(logFileOut) log.append("OPCODE_CTN_MOBILITY,"+System.currentTimeMillis()+",");
+            long startTime = 0;
+            long endTime = 0;
+            if(logFileOut) {
+                //TODO session ID is weired
+                sessionID = String.format("%08x",rand.nextInt(2147483647));
+                if(logging) System.out.println("New session "+sessionID);
+                log.append(sessionID+",");
+                startTime = System.currentTimeMillis();
+                log.append("OPCODE_CTN_MOBILITY,"+startTime+",");
+            }
             JsonObject jobj = skipGraphServer.get(strHomeCTIP);
             skipGraphServer.store(strHomeCTIP, strVisitingCTIP, byteVisitingCTIP, byteVisitingESIP, byteVisitingTargetHostIP, byteHomeCTIP, jobj);
-            if(logFileOut) log.append(System.currentTimeMillis()+"\n");
+            if(logFileOut) {
+                endTime = System.currentTimeMillis();
+                log.append(endTime+","+(endTime-startTime)+"\n");
+            }
 
 
             byte[] sendBuf = new byte[48];
@@ -892,14 +994,27 @@ class DHTManagerHandler extends SimpleChannelInboundHandler<DatagramPacket> {
 
             if(logging)System.out.printf("[Node %d] Getting the pair: (Host IP:Port Number=%s%s)\n", nodeIndex, strIP, strPortNumber);
 
-            if(logFileOut) log.append("OPCODE_GET_HASH,"+System.currentTimeMillis()+",");
+
+            long startTime = 0;
+            long endTime = 0;
+            if(logFileOut) {
+                //TODO session ID is weired
+                sessionID = String.format("%08x",rand.nextInt(2147483647));
+                if(logging) System.out.println("New session "+sessionID);
+                log.append(sessionID+",");
+                startTime = System.currentTimeMillis();
+                log.append("OPCODE_GET_HASH,"+startTime+",");
+            }
             if (strPortNumber.equals(":0")) {
                 skipGraphServer.get(OPCODE_GET_HASH, strIP, switchNum, byteHostIP, strDig);
             }
             else {
                 skipGraphServer.get(OPCODE_GET_HASH, strIP+strPortNumber, switchNum, byteHostIP, strDig);
             }
-            if(logFileOut) log.append(System.currentTimeMillis()+"\n");
+            if(logFileOut) {
+                endTime = System.currentTimeMillis();
+                log.append(endTime+","+(endTime-startTime)+"\n");
+            }
 
 
             //---------------client example
@@ -965,33 +1080,33 @@ class DHTServer {
     private static final int LOCALITY_AWARE_LEVEL = DHTManagerCreater.LOCALITY_AWARE_LEVEL;
     private static final int NETWORK_ADDRESS_LEVEL = 16;
 
-    private final SkipNode ipAddressAwareNode;
-    private final SkipNode localityAwareNode;
+    public final SkipNode ipAddressAwareNode;
+    public final SkipNode localityAwareNode;
 
-    private final String localityID;
+    public final String localityID;
 
-    private static final byte OPCODE_BOOTUP = 0;
-    private static final byte OPCODE_GET_HASH = 1;
-    private static final byte OPCODE_GET_IP = 2;
-    private static final byte OPCODE_INFORM_CONNECTION = 3;
-    private static final byte OPCODE_APP_MOBILITY = 4;
-    private static final byte OPCODE_CTN_MOBILITY = 5;
-    private static final byte OPCODE_GET_IPPORT = 6;
+    public static final byte OPCODE_BOOTUP = 0;
+    public static final byte OPCODE_GET_HASH = 1;
+    public static final byte OPCODE_GET_IP = 2;
+    public static final byte OPCODE_INFORM_CONNECTION = 3;
+    public static final byte OPCODE_APP_MOBILITY = 4;
+    public static final byte OPCODE_CTN_MOBILITY = 5;
+    public static final byte OPCODE_GET_IPPORT = 6;
 
-    private static final byte OPCODE_QUERIED_HASH = 1;
-    private static final byte OPCODE_QUERIED_IP = 2;
-    private static final byte OPCODE_UPDATE_IP = 3;
-    private static final byte OPCODE_NEW_APP = 4;
-    private static final byte OPCODE_NEW_CTN = 5;
+    public static final byte OPCODE_QUERIED_HASH = 1;
+    public static final byte OPCODE_QUERIED_IP = 2;
+    public static final byte OPCODE_UPDATE_IP = 3;
+    public static final byte OPCODE_NEW_APP = 4;
+    public static final byte OPCODE_NEW_CTN = 5;
 
 
-    private static final int VISITING_IP = 1;
-    private static final int ES_IP = 2;
-    private static final int VISITING_TARGET_HOST = 3;
-    private static final int HOME_TARGET_HOST = 4;
-    private static final int HOME_IP = 5;
-    private static final int LOCALITY_ID = 6;
-    private static final int LID_LIST = 7;
+    public static final int VISITING_IP = 1;
+    public static final int ES_IP = 2;
+    public static final int VISITING_TARGET_HOST = 3;
+    public static final int HOME_TARGET_HOST = 4;
+    public static final int HOME_IP = 5;
+    public static final int LOCALITY_ID = 6;
+    public static final int LID_LIST = 7;
 
     private static final int LM_HDR_LENGTH = 32;
 
@@ -1406,6 +1521,7 @@ class DHTServer {
                 }
                 sendData[42] = '\0';
 
+                /*
                 // Return entry to OvS kernal module
                 Channel clientCh = null;
                 try {
@@ -1424,9 +1540,13 @@ class DHTServer {
                     }
                     System.out.println();
                 }
+                */
 
-                replicateData(jobj, firstSHA);
+                if (localityID != null && localityAwareNode != null) {
+                    replicateData(jobj, firstSHA);
+                }
 
+                /*
                 if (logFileOut) {
                     Date enddate = new Date();
                     long endtime = enddate.getTime();
@@ -1459,9 +1579,9 @@ class DHTServer {
                             fw.close();
                         }
                     }
-                }
-                    //GOTO (2)
-                 else { // Fail
+                }*/
+                //GOTO (2)
+            }   else { // Fail
                     // Write new entry, home site is recent Edge
 
                     //TODO
@@ -1515,8 +1635,6 @@ class DHTServer {
 //                    //Update entry on prior locality site
 //                }
 
-            }
-
         } else if (opCode == OPCODE_GET_IP) {
             //In this case, input is an objectKey
             String firstSHA = input;
@@ -1566,8 +1684,11 @@ class DHTServer {
                     System.out.println();
                 }
 
-                replicateData(jobj, firstSHA);
+                if (localityID != null && localityAwareNode != null) {
+                    replicateData(jobj, firstSHA);
+                }
 
+                /*
                 if (logFileOut) {
                     Date enddate = new Date();
                     long endtime = enddate.getTime();
@@ -1600,7 +1721,7 @@ class DHTServer {
                             fw.close();
                         }
                     }
-                }
+                }*/
                 //GOTO (2)
             } else { // Fail
 
@@ -1758,8 +1879,11 @@ class DHTServer {
                     System.out.println();
                 }
 
-                replicateData(jobj, firstSHA);
+                if (localityID != null && localityAwareNode != null) {
+                    replicateData(jobj, firstSHA);
+                }
 
+                /*
                 if (logFileOut) {
                     Date enddate = new Date();
                     long endtime = enddate.getTime();
@@ -1792,7 +1916,7 @@ class DHTServer {
                             fw.close();
                         }
                     }
-                }
+                }*/
             }
             else { //Failed
             }
@@ -1983,19 +2107,21 @@ class DHTServer {
 
         jsonString.append("\""+ES_IP+"\" : \""+ strData +"\", ");
 
-        jsonString.append("\""+LOCALITY_ID+"\" : \""+ localityID + "\",");
+        String[] lidList = null;
+        if (localityID != null) {
+            jsonString.append("\"" + LOCALITY_ID + "\" : \"" + localityID + "\",");
 
-        String[] lidList = {localityID};
-        if (jobj != null) {
-            String lidJArr = extendLidList(jobj);
-            jsonString.append("\""+LID_LIST+"\":"+lidJArr+"}");
-            lidList = lidJArr.replaceAll("\\[","").replaceAll("\\]","").replaceAll("\"","").split(",");
-        }
-        else {
-            jsonString.append("\""+LID_LIST+"\":[\""+localityID+"\"]}");
+            lidList = new String[]{localityID};
+            if (jobj != null) {
+                String lidJArr = extendLidList(jobj);
+                jsonString.append("\"" + LID_LIST + "\":" + lidJArr + "}");
+                lidList = lidJArr.replaceAll("\\[", "").replaceAll("\\]", "").replaceAll("\"", "").split(",");
+            } else {
+                jsonString.append("\"" + LID_LIST + "\":[\"" + localityID + "\"]}");
+            }
         }
 
-        //TODO LID_LISt
+        //TODO LID_LIST
 
         String firstSHA = sha256(strHostIP);
 
@@ -2038,16 +2164,19 @@ class DHTServer {
             strData += String.format("%02x", homeTargetHostIP[i]);
         jsonString.append("\""+HOME_TARGET_HOST+"\" : \""+ strData +"\",");
 
-        jsonString.append("\""+LOCALITY_ID+"\" : \""+ localityID + "\",");
 
-        String[] lidList = {localityID};
-        if (jobj != null) {
-            String lidJArr = extendLidList(jobj);
-            jsonString.append("\""+LID_LIST+"\":"+lidJArr+"}");
-            lidList = lidJArr.replaceAll("\\[","").replaceAll("\\]","").replaceAll("\"","").split(",");
-        }
-        else {
-            jsonString.append("\""+LID_LIST+"\":[\""+localityID+"\"]}");
+        String[] lidList = null;
+        if (localityID != null) {
+            jsonString.append("\"" + LOCALITY_ID + "\" : \"" + localityID + "\",");
+
+            lidList = new String[]{localityID};
+            if (jobj != null) {
+                String lidJArr = extendLidList(jobj);
+                jsonString.append("\"" + LID_LIST + "\":" + lidJArr + "}");
+                lidList = lidJArr.replaceAll("\\[", "").replaceAll("\\]", "").replaceAll("\"", "").split(",");
+            } else {
+                jsonString.append("\"" + LID_LIST + "\":[\"" + localityID + "\"]}");
+            }
         }
 
 
@@ -2118,16 +2247,18 @@ class DHTServer {
             strData += String.format("%02x", visitingTargetHostIP[i]);
         jsonString.append("\""+VISITING_TARGET_HOST+"\" : \""+ strData +"\",");
 
-        jsonString.append("\""+LOCALITY_ID+"\" : \""+ localityID + "\",");
+        String[] lidList = null;
+        if (localityID != null) {
+            jsonString.append("\"" + LOCALITY_ID + "\" : \"" + localityID + "\",");
 
-        String[] lidList = {localityID};
-        if (jobj != null) {
-            String lidJArr = extendLidList(jobj);
-            jsonString.append("\""+LID_LIST+"\":"+lidJArr+"}");
-            lidList = lidJArr.replaceAll("\\[","").replaceAll("\\]","").replaceAll("\"","").split(",");
-        }
-        else {
-            jsonString.append("\""+LID_LIST+"\":[\""+localityID+"\"]}");
+            lidList = new String[]{localityID};
+            if (jobj != null) {
+                String lidJArr = extendLidList(jobj);
+                jsonString.append("\"" + LID_LIST + "\":" + lidJArr + "}");
+                lidList = lidJArr.replaceAll("\\[", "").replaceAll("\\]", "").replaceAll("\"", "").split(",");
+            } else {
+                jsonString.append("\"" + LID_LIST + "\":[\"" + localityID + "\"]}");
+            }
         }
 
         String firstSHA = sha256(strHomeCTIP);
@@ -2171,6 +2302,7 @@ class DHTServer {
 //        peer.put(Number160.createHash(firstSHA_2)).setData(new Data(jsonString.toString())).start();
         jsonString.setLength(0);
     }
+    // backup
 	/*
 	public void store(String strHostIP, byte[] hostIP, byte[] switchIP) throws IOException, NoSuchAlgorithmException {
 		//opCode == OPCODE_APP_MOBILITY

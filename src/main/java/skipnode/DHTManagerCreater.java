@@ -13,7 +13,7 @@ package skipnode;
 import java.util.ArrayList;
 
 public class DHTManagerCreater {
-    private static final int MAX_DHT_MNG_COUNT = 10;
+    private static final int MAX_DHT_MNG_COUNT = 1;
     private static ArrayList<DHTManagerThread> dhtMngThrLst = null;
     private static boolean logging = false;
 
@@ -23,7 +23,7 @@ public class DHTManagerCreater {
 
     public static void main(String[] args) {
         if (args.length == 5 || (args.length == 6 && args[5].equals("logging"))) {
-            if (args[5].equals("logging")) {
+            if (args.length == 6 && args[5].equals("logging")) {
                 logging = true;
             }
             if (args[1].length() != LOCALITY_AWARE_LEVEL && !args[1].equals("none")) {

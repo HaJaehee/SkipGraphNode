@@ -123,7 +123,7 @@ public final class DHTManager {
     public  boolean justReset = false;
     public  DHTServer skipGraphServer = null;
     public  boolean logging = false;
-    public  boolean logFileOut = false;
+    public  boolean logFileOut = true;
     public  boolean onEmulator = false;
     public  String[] input = null;
     //public static int skipGraphServerPort = 8468;
@@ -134,6 +134,8 @@ public final class DHTManager {
     public  int edgeNum = 0;
     public  int dhtNum = 0;
     public  String localityID = null;
+
+    public static String IPADDR = null;
 
     public  HashMap<String, String> kvMap= null;
 
@@ -152,29 +154,37 @@ public final class DHTManager {
     }
 
     public boolean isLocked() { return serverInitiationLock; }
+
+    private String getLocalIP (String interfaceName) throws Exception{
+        String ip = null;
+        NetworkInterface networkInterface = NetworkInterface.getByName(interfaceName);
+        if (networkInterface != null) {
+            Enumeration<InetAddress> inetAddress = networkInterface.getInetAddresses();
+            InetAddress currentAddress;
+            while(inetAddress != null && inetAddress.hasMoreElements()) {
+                currentAddress = inetAddress.nextElement();
+                if (currentAddress instanceof Inet4Address && !currentAddress.isLoopbackAddress()) {
+                    ip = currentAddress.toString().replaceAll("/", "");
+                    break;
+                }
+            }
+        }
+        return ip;
+    }
+
     public void run() throws Exception {
 
         //input = new String[] {"0"}; // For test
 
-
-        String interfaceName = "eth0";
-        NetworkInterface networkInterface = NetworkInterface.getByName(interfaceName);
-        Enumeration<InetAddress> inetAddress = networkInterface.getInetAddresses();
-        InetAddress currentAddress;
-        String ip = null;
-        while(inetAddress.hasMoreElements())
-        {
-            currentAddress = inetAddress.nextElement();
-            if(currentAddress instanceof Inet4Address && !currentAddress.isLoopbackAddress())
-            {
-                ip = currentAddress.toString().replaceAll("/", "");
-
-                break;
-            }
+        String ip = getLocalIP("eth0");
+        if (ip == null) {
+            ip = getLocalIP("enp6s0");
+        }
+        if (ip == null) {
+            ip = "192.168.0.4";
         }
 
-        ip = "192.168.0.4";
-
+        this.IPADDR = ip;
 
         kvMap = new HashMap<String, String>();
         EventLoopGroup groupClient = new NioEventLoopGroup();
@@ -315,7 +325,7 @@ public final class DHTManager {
         try{
             b.group(group)
                     .channel(NioDatagramChannel.class)
-                    .handler(new DHTManagerHandler(nodeIndex, justReset, logging, swIPAddrList, edgeSWList, swCount, PORT, bClient, skipGraphServer));
+                    .handler(new DHTManagerHandler(nodeIndex, justReset, logging, logFileOut, swIPAddrList, edgeSWList, swCount, PORT, bClient, skipGraphServer));
             serverInitiationLock = false;
             b.bind(PORT).sync().channel().closeFuture().await();
         }
@@ -334,6 +344,8 @@ public final class DHTManager {
 class DHTManagerHandler extends SimpleChannelInboundHandler<DatagramPacket> {
 
     private final boolean logging;
+    private final boolean logFileOut;
+    private final Random rand = new Random();
 
     private static final byte OPCODE_BOOTUP = 0;
     private static final byte OPCODE_GET_HASH = 1;
@@ -366,9 +378,10 @@ class DHTManagerHandler extends SimpleChannelInboundHandler<DatagramPacket> {
     private final DHTServer skipGraphServer;
 
 
-    public DHTManagerHandler(int nodeIndex, boolean justReset, boolean logging, ArrayList<String> swIPAddrList, ArrayList<Short> edgeSWList, int swCount, int PORT, Bootstrap bClient, DHTServer skipGraphServer) throws InterruptedException{
+    public DHTManagerHandler(int nodeIndex, boolean justReset, boolean logging, boolean logFileOut, ArrayList<String> swIPAddrList, ArrayList<Short> edgeSWList, int swCount, int PORT, Bootstrap bClient, DHTServer skipGraphServer) throws InterruptedException{
         super();
         this.logging = logging;
+        this.logFileOut = logFileOut;
         this.PORT = PORT;
         this.swIPAddrList = swIPAddrList;
         this.edgeSWList = edgeSWList;
@@ -471,6 +484,17 @@ class DHTManagerHandler extends SimpleChannelInboundHandler<DatagramPacket> {
 
         //if(logging)System.out.println("[Node "+DHTManager.nodeNum+"] Received Message: "+payload.toString());
 
+        String sessionID = "";
+        StringBuffer log = new StringBuffer();
+        if(logFileOut) {
+
+            //TODO session ID is weired
+            sessionID = String.format("%8s",new BigInteger(""+rand.nextInt()).toString(16)).replace(" ","0");
+            if(logging) System.out.println("New session "+sessionID);
+            log.append("sessionID,opCode,startTime,endTime\n");
+            log.append(sessionID+",");
+        }
+
         byte opCode = payload.readByte();
         byte switchNum = payload.readByte();
         byte switchIndex = (byte)(switchNum-1);
@@ -505,6 +529,7 @@ class DHTManagerHandler extends SimpleChannelInboundHandler<DatagramPacket> {
 //			String strInput = opCode+swNum+hostIP;
         }*/ else if (opCode == OPCODE_GET_IP){
             if(logging)System.out.println("opCode 2: get Host IP from DHT server with Object ID.");
+
             //copy payload(Object ID) to strDig byte array and query to DHT table
             byte[] strDig = new byte[LM_HDR_LENGTH]; //Jaehee modified 160720
 
@@ -526,8 +551,9 @@ class DHTManagerHandler extends SimpleChannelInboundHandler<DatagramPacket> {
                         .substring(1));
             }
 
-
+            if(logFileOut) log.append("OPCODE_GET_IP,"+System.currentTimeMillis()+",");
             skipGraphServer.get(opCode, sb.toString(), switchNum, byteHostIP, strDig);
+            if(logFileOut) log.append(System.currentTimeMillis()+"\n");
 
             //---------------client example
 //			String opCode = OPCODE_GET_IP;
@@ -541,6 +567,8 @@ class DHTManagerHandler extends SimpleChannelInboundHandler<DatagramPacket> {
 //				e.printStackTrace();
 //			}
 //			String strInput = opCode+swNum+esIP+hash;
+
+
 
         } else if (opCode == OPCODE_INFORM_CONNECTION){
             if(logging)System.out.println("opCode 3: store DHT server.");
@@ -556,8 +584,11 @@ class DHTManagerHandler extends SimpleChannelInboundHandler<DatagramPacket> {
 
             if(logging)System.out.printf("[Node %d] Storing the pair: (Host IP=%s, Switch IP=%s)\n", nodeIndex,strIP,strSWIP);
 
+            if(logFileOut) log.append("OPCODE_INFORM_CONNECTION,"+System.currentTimeMillis()+",");
             JsonObject jobj = skipGraphServer.get(strIP);
             skipGraphServer.store(strIP, byteHostIP, byteSwitchIP, jobj);
+            if(logFileOut) log.append(System.currentTimeMillis()+"\n");
+
 
             byte[] sendBuf = new byte[42];
             sendBuf[0] = OPCODE_UPDATE_IP;
@@ -632,16 +663,15 @@ class DHTManagerHandler extends SimpleChannelInboundHandler<DatagramPacket> {
             byte[] byteVisitingTargetHostIP = ByteBuffer.allocate(4).putInt(nVisitingTargetHostInt).array();
             String strVisitingTargetHostIP = String.format("%d.%d.%d.%d",(nVisitingTargetHost & 0xFF), (nVisitingTargetHost >> 8 & 0xFF), (nVisitingTargetHost >> 16 & 0xFF), (nVisitingTargetHost >> 24 & 0xFF));
 
-            if(logging){
-
+            if(logging) {
                 String strVisitingESIP = String.format("%d.%d.%d.%d",(nVisitingESIP & 0xFF), (nVisitingESIP >> 8 & 0xFF), (nVisitingESIP >> 16 & 0xFF), (nVisitingESIP >> 24 & 0xFF));
-
-
                 System.out.printf("[Node %d] Storing the pair: (Original Host IP=%s, Port Number=%s, New Host IP=%s, New Edge Switch IP=%s)\n", nodeIndex, strHomeTargetHostIP, strPortNumber, strVisitingTargetHostIP, strVisitingESIP);
             }
 
+            if(logFileOut) log.append("OPCODE_APP_MOBILITY,"+System.currentTimeMillis()+",");
             JsonObject jobj = skipGraphServer.get(strHomeTargetHostIP);
             skipGraphServer.store(strHomeTargetHostIP+strPortNumber, strVisitingTargetHostIP+strPortNumber, byteVisitingTargetHostIP, byteVisitingESIP, byteHomeTargetHostIP, jobj);
+            if(logFileOut) log.append(System.currentTimeMillis()+"\n");
 
             byte[] sendBuf = new byte[48];
 
@@ -760,8 +790,11 @@ class DHTManagerHandler extends SimpleChannelInboundHandler<DatagramPacket> {
                 System.out.printf("[Node %d] Storing the pair: (Original Cnt IP=%s, New Ctn IP=%s, New Host IP=%s, New Edge Switch IP=%s)\n", nodeIndex, strHomeCTIP, strVisitingCTIP, strVisitingTargetHostIP, strVisitingESIP);
             }
 
+            if(logFileOut) log.append("OPCODE_CTN_MOBILITY,"+System.currentTimeMillis()+",");
             JsonObject jobj = skipGraphServer.get(strHomeCTIP);
             skipGraphServer.store(strHomeCTIP, strVisitingCTIP, byteVisitingCTIP, byteVisitingESIP, byteVisitingTargetHostIP, byteHomeCTIP, jobj);
+            if(logFileOut) log.append(System.currentTimeMillis()+"\n");
+
 
             byte[] sendBuf = new byte[48];
 
@@ -859,12 +892,14 @@ class DHTManagerHandler extends SimpleChannelInboundHandler<DatagramPacket> {
 
             if(logging)System.out.printf("[Node %d] Getting the pair: (Host IP:Port Number=%s%s)\n", nodeIndex, strIP, strPortNumber);
 
+            if(logFileOut) log.append("OPCODE_GET_HASH,"+System.currentTimeMillis()+",");
             if (strPortNumber.equals(":0")) {
                 skipGraphServer.get(OPCODE_GET_HASH, strIP, switchNum, byteHostIP, strDig);
             }
             else {
                 skipGraphServer.get(OPCODE_GET_HASH, strIP+strPortNumber, switchNum, byteHostIP, strDig);
             }
+            if(logFileOut) log.append(System.currentTimeMillis()+"\n");
 
 
             //---------------client example
@@ -875,6 +910,14 @@ class DHTManagerHandler extends SimpleChannelInboundHandler<DatagramPacket> {
 //			String strInput = opCode+swNum+homeTargetHostIP+portNumber;
 
         }
+
+        if(logFileOut) {
+            // log file append
+            FileWriter fw = new FileWriter("log-"+DHTManager.IPADDR+".csv", true);
+            fw.write(log.toString());
+            fw.close();
+        }
+
         //old code
         /*else if (opCode == OPCODE_TOGGLE_LOGGING){
         	if(logging)System.out.println("opCode 101: Toggle ovs logging");

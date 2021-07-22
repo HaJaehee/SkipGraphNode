@@ -45,6 +45,21 @@ public class ConcurrentBackupTable implements LookupTable {
     }
 
     @Override
+    public HashMap<String, SkipNodeIdentity> getRepresentativeLocalityNodeMap() {
+        return null;
+    }
+
+    @Override
+    public SkipNodeIdentity getRepresentativeLocalityNode(String target) {
+        return null;
+    }
+
+    @Override
+    public void addRepresentativeLocalityNode(String target, SkipNodeIdentity identity) {
+
+    }
+
+    @Override
     public SkipNodeIdentity updateLeft(SkipNodeIdentity node, int level) {
         addLeftNode(node, level);
         return getLeft(level);

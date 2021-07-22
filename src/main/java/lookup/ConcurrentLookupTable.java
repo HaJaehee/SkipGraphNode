@@ -8,9 +8,9 @@ package lookup;
  Added nodesAtHighestLevel.
  Modifier : Jaehee ha (jaehee.ha@kaist.ac.kr)
 
- Rev. history : 2021-07-02
- Version : 1.2.1
- Added HashMap object repLocalityNode;
+ Rev. history : 2021-07-22
+ Version : 1.2.3
+ Added HashMap object representativeLocalityNodeMap;
  Modifier : Jaehee ha (jaehee.ha@kaist.ac.kr)
  */
 /* -------------------------------------------------------- */
@@ -41,7 +41,7 @@ public class ConcurrentLookupTable implements LookupTable {
 
     private ArrayList<SkipNodeIdentity> nodesAtHighestLevel;
 
-    private HashMap<String, SkipNodeIdentity> repLocalityNodes;
+    private HashMap<String, SkipNodeIdentity> representativeLocalityNodeMap;
 
     private enum direction {
         LEFT,
@@ -56,7 +56,7 @@ public class ConcurrentLookupTable implements LookupTable {
             nodes.add(i, LookupTable.EMPTY_NODE);
         }
         nodesAtHighestLevel = new ArrayList<SkipNodeIdentity>();
-        repLocalityNodes = new HashMap<String, SkipNodeIdentity>();
+        representativeLocalityNodeMap = new HashMap<String, SkipNodeIdentity>();
     }
 
     /**
@@ -78,6 +78,19 @@ public class ConcurrentLookupTable implements LookupTable {
         return nodesAtHighestLevel;
     }
 
+    @Override
+    public HashMap<String, SkipNodeIdentity> getRepresentativeLocalityNodeMap() {
+        return representativeLocalityNodeMap;}
+
+    @Override
+    public SkipNodeIdentity getRepresentativeLocalityNode (String target) {
+        return representativeLocalityNodeMap.get(target); }
+
+    @Override
+    public void addRepresentativeLocalityNode (String target, SkipNodeIdentity identity) {
+        representativeLocalityNodeMap.put(target, identity);
+        return;
+    }
 
     @Override
     public SkipNodeIdentity updateLeft(SkipNodeIdentity node, int level) {

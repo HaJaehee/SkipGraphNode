@@ -1,7 +1,6 @@
 package skipnode;
 
 import java.io.Serializable;
-import java.util.List;
 
 /**
  * Represents the result of a search containing the piggybacked information.

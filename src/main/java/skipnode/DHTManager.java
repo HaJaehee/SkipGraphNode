@@ -173,7 +173,7 @@ public final class DHTManager {
             }
         }
 
-        ip = "192.168.0.104";
+        ip = "192.168.0.4";
 
 
         kvMap = new HashMap<String, String>();
@@ -351,8 +351,11 @@ class DHTManagerHandler extends SimpleChannelInboundHandler<DatagramPacket> {
     private static final byte OPCODE_UPDATE_IP = 3;
     private static final byte OPCODE_NEW_APP = 4;
     private static final byte OPCODE_NEW_CTN = 5;
+    private static final byte OPCODE_DUMP_MOBIL_INFO = 66;
 
     private static final int LM_HDR_LENGTH = 32;
+
+    private static final int DUMP_NUM = 1000000;
 
     private final ArrayList<String> swIPAddrList;
     private final ArrayList<Short> edgeSWList;
@@ -483,7 +486,12 @@ class DHTManagerHandler extends SimpleChannelInboundHandler<DatagramPacket> {
             if(logging)System.out.println("opCode 0: show edge switchs list.");
             if(logging)System.out.println("opCode 0 will be supported soon.");
 
-        } /*else if (opCode == OPCODE_GET_HASH){  //deprecated by jaehee 170414
+        } else if (opCode == OPCODE_DUMP_MOBIL_INFO){
+
+        }
+
+
+        /*else if (opCode == OPCODE_GET_HASH){  //deprecated by jaehee 170414
         	if(logging)System.out.println("opCode 1: get Object ID from DHT server with digested IP");
         	//make Object ID and query to DHT table
 			MessageDigest mDigest = MessageDigest.getInstance("SHA-256");
@@ -1103,6 +1111,7 @@ class DHTServer {
         }
         localityAwareNode.insert(introducerIP, introducerPortNumber);
 
+
         return localityAwareNode;
     }
 
@@ -1200,7 +1209,7 @@ class DHTServer {
                 searchResult = valueLA;
             }
 
-            // Deprecates recursive search by expanding locality regions.
+            // Deprecated recursive search by expanding locality regions.
             /*
             else { //Failed
                 int targetPrefixLength = LOCALITY_AWARE_LEVEL;

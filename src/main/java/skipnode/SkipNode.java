@@ -61,6 +61,11 @@ package skipnode;
  Additionally implemented lowest diff get/store method.
  Modifier : Jaehee ha (jaehee.ha@kaist.ac.kr)
 
+ Rev. history : 2021-07-22
+ Version : 1.2.3
+ Implemented representative locality node cache functions.
+ Modifier : Jaehee ha (jaehee.ha@kaist.ac.kr)
+
  //TODO Are we need to delete a resource?
  //TODO List of locality representative nodes MUST be needed.
  //TODO lid 000000에 저장되어야 하는데 000001 에 저장됨.
@@ -684,9 +689,20 @@ public class SkipNode implements SkipNodeInterface {
             right = middleLayer.getRightNode(right.getAddress(), right.getPort(), highestLevel);
         }
 
+
         return cumulativeNodeList;
     }
 
+    /**
+     * Handle resource by name ID.
+     * It uses representativeLocalityNodeMap of lookupTable.
+     * @param targetNameID
+     * @param isGettingResource
+     * @param isSettingResource
+     * @param resourceKey
+     * @param resourceValue
+     * @return The SearchResult
+     */
     private SearchResult handleResourceByNameID(String targetNameID, boolean isGettingResource, boolean isSettingResource, String resourceKey, String resourceValue) {
 
         logger.debug("Common bits between " + nameID + " and " + targetNameID + " is " + SkipNodeIdentity.commonBits(nameID, targetNameID));
@@ -703,10 +719,28 @@ public class SkipNode implements SkipNodeInterface {
             return new SearchResult(getIdentity(handleMapStorageWithNameID(isGettingResource, isSettingResource, resourceKey, resourceValue)));
         }
 
+        SkipNodeIdentity targetNodeIdentity = lookupTable.getRepresentativeLocalityNode(targetNameID);
+
+        // If it has the cached search result
+        if (targetNodeIdentity != null)
+        {
+            logger.debug("The representative locality node exists in the cache.");
+            logger.debug("Common bits between " + targetNodeIdentity.getNameID() + " and " + targetNameID + " is " + SkipNodeIdentity.commonBits(targetNodeIdentity.getNameID(), targetNameID));
+            logger.debug("Handover the query to the representative locality node.");
+            return new SearchResult(middleLayer.handleMapStorageWithRsrcKey(targetNodeIdentity.getAddress(), targetNodeIdentity.getPort(), isGettingResource, isSettingResource, resourceKey, resourceValue));
+        }
+
         // Initiate the search.
         else {
-            return middleLayer.handleResourceByNameIDRecursive(address, port, targetNameID, level, isGettingResource, isSettingResource, resourceKey, resourceValue);
-
+            logger.debug("No representative locality node exists in the cache.");
+            SearchResult result = middleLayer.handleResourceByNameIDRecursive(address, port, targetNameID, level, isGettingResource, isSettingResource, resourceKey, resourceValue);
+            // Caching the search result
+            if (targetNodeIdentity == null){
+                SkipNodeIdentity identity = result.result;
+                logger.debug("A new representative locality node is added in the cache.");
+                lookupTable.addRepresentativeLocalityNode(targetNameID, new SkipNodeIdentity(identity.getNameID(), identity.getNumID(), identity.getAddress(), identity.getPort(), null, null));
+            }
+            return result;
         }
     }
 

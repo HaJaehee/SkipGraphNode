@@ -4,12 +4,19 @@ import skipnode.SkipNodeIdentity;
 
 import java.math.BigInteger;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 
 public interface LookupTable {
 
     SkipNodeIdentity EMPTY_NODE = new SkipNodeIdentity("EMPTY", BigInteger.valueOf(-1), "EMPTY", -1);
     SkipNodeIdentity INVALID_NODE = new SkipNodeIdentity("INVALID", BigInteger.valueOf(-1), "INVALID", -1);
+
+    HashMap<String, SkipNodeIdentity> getRepresentativeLocalityNodeMap();
+
+    SkipNodeIdentity getRepresentativeLocalityNode(String target);
+
+    void addRepresentativeLocalityNode(String target, SkipNodeIdentity identity);
 
     /**
      * Updates the left neighbor on the given level to be the node

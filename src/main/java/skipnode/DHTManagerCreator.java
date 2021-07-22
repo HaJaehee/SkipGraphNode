@@ -17,7 +17,7 @@ public class DHTManagerCreator {
     private static ArrayList<DHTManagerThread> dhtMngThrLst = null;
     private static boolean logging = false;
 
-    public static final int LOCALITY_AWARE_LEVEL = 6;
+    public static final int LOCALITY_AWARE_LEVEL = 5;
     DHTManagerCreator() {
     }
 

@@ -545,11 +545,14 @@ class DHTManagerHandler extends SimpleChannelInboundHandler<DatagramPacket> {
                         for (int i = 0; i < switchIP.length; i++)
                             strData += String.format("%02x", Integer.parseInt(switchIP[i]));
 
-                        jsonString.append("\"" + this.skipGraphServer.ES_IP + "\" : \"" + strData + "\", ");
+                        jsonString.append("\"" + this.skipGraphServer.ES_IP + "\" : \"" + strData + "\"");
 
                         if (this.skipGraphServer.localityID != null) {
-                            jsonString.append("\"" + this.skipGraphServer.LOCALITY_ID + "\" : \"" + this.skipGraphServer.localityID + "\",");
-                            jsonString.append("\"" + this.skipGraphServer.LID_LIST + "\":[\"" + this.skipGraphServer.localityID + "\"]}");
+                            jsonString.append(", \"" + this.skipGraphServer.LOCALITY_ID + "\" : \"" + this.skipGraphServer.localityID + "\",");
+                            jsonString.append(", \"" + this.skipGraphServer.LID_LIST + "\":[\"" + this.skipGraphServer.localityID + "\"]}");
+                        }
+                        else {
+                            jsonString.append("}");
                         }
 
                         //TODO LID_LIST
@@ -1117,7 +1120,7 @@ class DHTServer {
     private final Bootstrap bClient;
     private final int ovsPort = 9999;
 
-    private final boolean isIpAddrAwareAvailable = false;
+    private final boolean isIpAddrAwareAvailable = true;
 
     public DHTServer(String ip, int portNumber, String localityID, HashMap kvMap, boolean logging, boolean logFileOut,
                      int edgeNum, int dhtNum, Bootstrap bClient) throws Exception {
@@ -1190,11 +1193,18 @@ class DHTServer {
         String[] ipSplit = ip.split("\\.");
         String nameId = "";
         //USE SECOND IP FIELD 8 bits FOR Prefix
-        Integer item = Integer.parseInt(ipSplit[2]);
+        if(logging) System.out.println(ipSplit[1]);
+        Integer item = Integer.parseInt(ipSplit[1]);
         nameId = String.format("%8s", Integer.toBinaryString(item)).replaceAll(" ", "0");
 
         //USE THIRD IP FIELD 8 bits FOR Prefix
-        item = Integer.parseInt(ipSplit[3]);
+
+        //TODO "+dhtNum" is used for local experiment.
+        //TODO "+dhtNum" is must be removed when executing on emulator
+        // ******************************************
+        if(logging) System.out.println((ipSplit[2]+dhtNum)+"");
+        item = Integer.parseInt(ipSplit[2])+dhtNum;
+        // ******************************************
         nameId = nameId + String.format("%8s", Integer.toBinaryString(item)).replaceAll(" ", "0");
 
         //Supposed to randomly generated.
@@ -1429,8 +1439,9 @@ class DHTServer {
             String[] ipSplit = input.split("\\.");
             String nameId = "";
             //ONLY USE THIRD IP FIELD 8 bits FOR Prefix
+
             Integer item = Integer.parseInt(ipSplit[1]);
-            nameId = "1" + String.format("%8s", Integer.toBinaryString(item)).replaceAll(" ", "0").substring(1);
+            nameId = String.format("%8s", Integer.toBinaryString(item)).replaceAll(" ", "0");
             item = Integer.parseInt(ipSplit[2]);
             nameId = nameId + String.format("%8s", Integer.toBinaryString(item)).replaceAll(" ", "0");
             if(logging) {
@@ -2105,11 +2116,11 @@ class DHTServer {
         for(int i=0; i < switchIP.length; i++)
             strData += String.format("%02x", switchIP[i]);
 
-        jsonString.append("\""+ES_IP+"\" : \""+ strData +"\", ");
+        jsonString.append("\""+ES_IP+"\" : \""+ strData +"\"");
 
         String[] lidList = null;
         if (localityID != null) {
-            jsonString.append("\"" + LOCALITY_ID + "\" : \"" + localityID + "\",");
+            jsonString.append(", \"" + LOCALITY_ID + "\" : \"" + localityID + "\", ");
 
             lidList = new String[]{localityID};
             if (jobj != null) {
@@ -2119,6 +2130,9 @@ class DHTServer {
             } else {
                 jsonString.append("\"" + LID_LIST + "\":[\"" + localityID + "\"]}");
             }
+        }
+        else {
+            jsonString.append("}");
         }
 
         //TODO LID_LIST
@@ -2135,6 +2149,7 @@ class DHTServer {
             localityAwareNode.storeResourceByNumID(new BigInteger(firstSHA, 16), jsonString.toString());
         }
         if(ipAddressAwareNode != null) {
+            ipAddressAwareNode.storeResource(firstSHA,jsonString.toString());
             ipAddressAwareNode.storeResourceByResourceKey(firstSHA, jsonString.toString());
         }
 
@@ -2162,12 +2177,12 @@ class DHTServer {
         strData = "";
         for(int i=0; i < homeTargetHostIP.length ;i++)
             strData += String.format("%02x", homeTargetHostIP[i]);
-        jsonString.append("\""+HOME_TARGET_HOST+"\" : \""+ strData +"\",");
+        jsonString.append("\""+HOME_TARGET_HOST+"\" : \""+ strData +"\"");
 
 
         String[] lidList = null;
         if (localityID != null) {
-            jsonString.append("\"" + LOCALITY_ID + "\" : \"" + localityID + "\",");
+            jsonString.append(", \"" + LOCALITY_ID + "\" : \"" + localityID + "\", ");
 
             lidList = new String[]{localityID};
             if (jobj != null) {
@@ -2177,6 +2192,9 @@ class DHTServer {
             } else {
                 jsonString.append("\"" + LID_LIST + "\":[\"" + localityID + "\"]}");
             }
+        }
+        else {
+            jsonString.append("}");
         }
 
 
@@ -2191,6 +2209,7 @@ class DHTServer {
             localityAwareNode.storeResourceByNumID(new BigInteger(firstSHA, 16), jsonString.toString());
         }
         if(ipAddressAwareNode != null) {
+            ipAddressAwareNode.storeResource(firstSHA,jsonString.toString());
             ipAddressAwareNode.storeResourceByResourceKey(firstSHA, jsonString.toString());
         }
 //        peer.put(Number160.createHash(firstSHA)).setData(new Data(jsonString.toString())).start();
@@ -2245,11 +2264,11 @@ class DHTServer {
         strData = "";
         for(int i=0; i < visitingTargetHostIP.length ;i++)
             strData += String.format("%02x", visitingTargetHostIP[i]);
-        jsonString.append("\""+VISITING_TARGET_HOST+"\" : \""+ strData +"\",");
+        jsonString.append("\""+VISITING_TARGET_HOST+"\" : \""+ strData +"\"");
 
         String[] lidList = null;
         if (localityID != null) {
-            jsonString.append("\"" + LOCALITY_ID + "\" : \"" + localityID + "\",");
+            jsonString.append(", \"" + LOCALITY_ID + "\" : \"" + localityID + "\", ");
 
             lidList = new String[]{localityID};
             if (jobj != null) {
@@ -2259,6 +2278,9 @@ class DHTServer {
             } else {
                 jsonString.append("\"" + LID_LIST + "\":[\"" + localityID + "\"]}");
             }
+        }
+        else {
+            jsonString.append("}");
         }
 
         String firstSHA = sha256(strHomeCTIP);
@@ -2272,6 +2294,7 @@ class DHTServer {
             localityAwareNode.storeResourceByNumID(new BigInteger(firstSHA, 16), jsonString.toString());
         }
         if (ipAddressAwareNode != null) {
+            ipAddressAwareNode.storeResource(firstSHA,jsonString.toString());
             ipAddressAwareNode.storeResourceByResourceKey(firstSHA, jsonString.toString());
         }
 //        peer.put(Number160.createHash(firstSHA)).setData(new Data(jsonString.toString())).start();

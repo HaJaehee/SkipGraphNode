@@ -1077,7 +1077,7 @@ class ClientHandler extends SimpleChannelInboundHandler<DatagramPacket> {
 }
 
 class DHTServer {
-    private static final int LOCALITY_AWARE_LEVEL = DHTManagerCreater.LOCALITY_AWARE_LEVEL;
+    private static final int LOCALITY_AWARE_LEVEL = DHTManagerCreator.LOCALITY_AWARE_LEVEL;
     private static final int NETWORK_ADDRESS_LEVEL = 16;
 
     public final SkipNode ipAddressAwareNode;

@@ -12,13 +12,13 @@ package skipnode;
 
 import java.util.ArrayList;
 
-public class DHTManagerCreater {
+public class DHTManagerCreator {
     private static final int MAX_DHT_MNG_COUNT = 1;
     private static ArrayList<DHTManagerThread> dhtMngThrLst = null;
     private static boolean logging = false;
 
     public static final int LOCALITY_AWARE_LEVEL = 6;
-    DHTManagerCreater () {
+    DHTManagerCreator() {
     }
 
     public static void main(String[] args) {
@@ -87,8 +87,8 @@ public class DHTManagerCreater {
         else{
             if(logging){
                 System.out.println("Ambiguous Input.");
-                System.out.println("Usage: java DHTManager [switch num] [locality id] [DHT node num] [introducer ip] [introducer port] ");
-                System.out.println("Usage: java DHTManager [switch num] [locality id] [DHT node num] [introducer ip] [introducer port] logging");
+                System.out.println("Usage: java DHTManagerCreator [switch num] [locality id] [DHT node num] [introducer ip] [introducer port] ");
+                System.out.println("Usage: java DHTManagerCreator [switch num] [locality id] [DHT node num] [introducer ip] [introducer port] logging");
                 System.out.println("0 <= DHT node num < 50");
             }
             return;

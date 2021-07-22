@@ -26,8 +26,8 @@ public class DHTManagerCreater {
             if (args.length == 6 && args[5].equals("logging")) {
                 logging = true;
             }
-            if (args[1].length() != LOCALITY_AWARE_LEVEL && !args[1].equals("none")) {
-                System.out.println("Locality ID length must be "+LOCALITY_AWARE_LEVEL+" or 'none'.");
+            if (args[1].length() < LOCALITY_AWARE_LEVEL && !args[1].equals("none")) {
+                System.out.println("Locality ID length must be equal or longer than "+LOCALITY_AWARE_LEVEL+" or 'none'.");
                 System.exit(0);
             }
             dhtMngThrLst = new ArrayList<DHTManagerThread>();
@@ -43,7 +43,7 @@ public class DHTManagerCreater {
                         args2[3] = args[5];
                     }
                     args2[0] = args[0];
-                    args2[1] = args[1];
+                    args2[1] = args[1].substring(0,LOCALITY_AWARE_LEVEL);
                     args2[2] = args[2];
                     dhtManager = new DHTManagerThread(args2);
                     dhtManager.start();

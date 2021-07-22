@@ -727,12 +727,15 @@ public class SkipNode implements SkipNodeInterface {
             logger.debug("The representative locality node exists in the cache.");
             logger.debug("Common bits between " + targetNodeIdentity.getNameID() + " and " + targetNameID + " is " + SkipNodeIdentity.commonBits(targetNodeIdentity.getNameID(), targetNameID));
             logger.debug("Handover the query to the representative locality node.");
-            return new SearchResult(middleLayer.handleMapStorageWithRsrcKey(targetNodeIdentity.getAddress(), targetNodeIdentity.getPort(), isGettingResource, isSettingResource, resourceKey, resourceValue));
+            SearchResult result = new SearchResult(middleLayer.handleMapStorageWithRsrcKey(targetNodeIdentity.getAddress(), targetNodeIdentity.getPort(), isGettingResource, isSettingResource, resourceKey, resourceValue));
+            logger.debug("Received the search result. Resource key: " + resourceKey + " and value: " + result.result.getResourceQueryResult());
+            return result;
         }
 
         // Initiate the search.
         else {
             logger.debug("No representative locality node exists in the cache.");
+            logger.debug("Initiate the search by name ID.");
             SearchResult result = middleLayer.handleResourceByNameIDRecursive(address, port, targetNameID, level, isGettingResource, isSettingResource, resourceKey, resourceValue);
             // Caching the search result
             if (targetNodeIdentity == null){
@@ -740,6 +743,7 @@ public class SkipNode implements SkipNodeInterface {
                 logger.debug("A new representative locality node is added in the cache.");
                 lookupTable.addRepresentativeLocalityNode(targetNameID, new SkipNodeIdentity(identity.getNameID(), identity.getNumID(), identity.getAddress(), identity.getPort(), null, null));
             }
+            logger.debug("Received the search result. Resource key: " + resourceKey + " and value: " + result.result.getResourceQueryResult());
             return result;
         }
     }

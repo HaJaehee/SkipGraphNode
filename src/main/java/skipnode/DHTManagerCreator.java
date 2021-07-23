@@ -13,7 +13,7 @@ package skipnode;
 import java.util.ArrayList;
 
 public class DHTManagerCreator {
-    private static final int MAX_DHT_MNG_COUNT = 10;
+    private static final int MAX_DHT_MNG_COUNT = 1;
     private static ArrayList<DHTManagerThread> dhtMngThrLst = null;
     private static boolean logging = false;
 

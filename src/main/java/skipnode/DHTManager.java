@@ -185,6 +185,7 @@ public final class DHTManager {
         }
 
         this.IPADDR = ip;
+        System.out.println("IP Addr: "+this.IPADDR);
 
         kvMap = new HashMap<String, String>();
         EventLoopGroup groupClient = new NioEventLoopGroup();

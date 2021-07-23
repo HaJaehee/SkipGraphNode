@@ -1120,7 +1120,7 @@ class DHTServer {
     private final Bootstrap bClient;
     private final int ovsPort = 9999;
 
-    private final boolean isIpAddrAwareAvailable = true;
+    private final boolean isIpAddrAwareAvailable = false;
 
     public DHTServer(String ip, int portNumber, String localityID, HashMap kvMap, boolean logging, boolean logFileOut,
                      int edgeNum, int dhtNum, Bootstrap bClient) throws Exception {

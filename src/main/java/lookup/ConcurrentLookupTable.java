@@ -65,7 +65,56 @@ public class ConcurrentLookupTable implements LookupTable {
      */
     @Override
     public void addNodeIntoListAtHighestLevel (SkipNodeIdentity id) {
-        nodesAtHighestLevel.add(id);
+
+        int length = nodesAtHighestLevel.size();
+        int index = (int) nodesAtHighestLevel.size()/2;
+        int indexTemp = -1;
+        int var = index;
+        while (length > 0) {
+            if (indexTemp == index) {
+                break;
+            }
+            // nodesAtHighestLevel.get(index).getNumID() == id.getNumID()
+            if (nodesAtHighestLevel.get(index).getNumID().compareTo(id.getNumID()) == 0) {
+                index = -1;
+                break;
+            }
+            // nodesAtHighestLevel.get(0).getNumID() > id.getNumID()
+            if (nodesAtHighestLevel.get(0).getNumID().compareTo(id.getNumID()) == 1) {
+                index = 0;
+                break;
+            }
+            // nodesAtHighestLevel.get(length-1).getNumID() < id.getNumID()
+            if (nodesAtHighestLevel.get(length-1).getNumID().compareTo(id.getNumID()) == -1) {
+                index = length;
+                break;
+            }
+            // nodesAtHighestLevel.get(index).getNumID() < id.getNumID() and
+            // nodesAtHighestLevel.get(index+1).getNumID() > id.getNumID()
+            if (length >= 2 && index+1 < length && nodesAtHighestLevel.get(index).getNumID().compareTo(id.getNumID()) == -1 &&
+                nodesAtHighestLevel.get(index+1).getNumID().compareTo(id.getNumID()) == 1) {
+                index = index+1;
+                break;
+            }
+            // nodesAtHighestLevel.get(index).getNumID() < id.getNumID()
+            if (nodesAtHighestLevel.get(index).getNumID().compareTo(id.getNumID()) == -1) {
+                indexTemp = index;
+                index = (int) (index + var/2);
+                var = (int) var/2;
+                continue;
+            }
+            // nodesAtHighestLevel.get(index).getNumID() > id.getNumID()
+            if (nodesAtHighestLevel.get(index).getNumID().compareTo(id.getNumID()) == 1) {
+                indexTemp = index;
+                index = (int) (index - var/2);
+                var = (int) var/2;
+                continue;
+            }
+        }
+        if (index >= 0) {
+            nodesAtHighestLevel.add(index,id);
+        }
+
     }
 
     @Override

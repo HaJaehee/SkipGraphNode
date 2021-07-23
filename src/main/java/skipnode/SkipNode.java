@@ -876,30 +876,59 @@ public class SkipNode implements SkipNodeInterface {
         }
         else {
             SkipNodeIdentity minDiffNodeIdentity = getIdentity(null);
-            SkipNodeIdentity minNodeIdentity = getIdentity(null);
-            BigInteger minDiff = new BigInteger("ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff", 16);
 
-            for (SkipNodeIdentity i : lookupTable.getNodeListAtHighestLevel()) { //search from replication
-                //minNodeIdentity.getNumID() > i.getNumID()
-                if (minNodeIdentity.getNumID().compareTo(i.getNumID()) == 1) {
-                    minNodeIdentity = i;
-                }
-
-                //i.getNumID() < resourceKey && diff < minDiff
-                BigInteger key = new BigInteger(resourceKey, 16);
-                BigInteger diff = i.getNumID().subtract(key).abs();
-                int compResult = i.getNumID().compareTo(key);
-                if (compResult == 0) {
-                    minDiffNodeIdentity = i;
+            ArrayList<SkipNodeIdentity> list = lookupTable.getNodeListAtHighestLevel();
+            int length = list.size();
+            int index = (int) list.size()/2;
+            int indexTemp = -1;
+            int var = index;
+            BigInteger key = new BigInteger(resourceKey, 16);
+            while (length > 0) {
+                if (indexTemp == index) {
                     break;
-                } else if (compResult == -1 && diff.compareTo(minDiff) == -1) {
-                    minDiff = diff;
-                    minDiffNodeIdentity = i;
+                }
+                // nodesAtHighestLevel.get(index).getNumID() == key
+                if (list.get(index).getNumID().compareTo(key) == 0) {
+                    index = -1;
+                    break;
+                }
+                // nodesAtHighestLevel.get(0).getNumID() > key
+                if (list.get(0).getNumID().compareTo(key) == 1) {
+                    index = 0;
+                    break;
+                }
+                // nodesAtHighestLevel.get(length-1).getNumID() < key
+                if (list.get(length-1).getNumID().compareTo(key) == -1) {
+                    index = length;
+                    break;
+                }
+                // nodesAtHighestLevel.get(index).getNumID() < key and
+                // nodesAtHighestLevel.get(index+1).getNumID() > key
+                if (length >= 2 && index+1 < length && list.get(index).getNumID().compareTo(key) == -1 &&
+                        list.get(index+1).getNumID().compareTo(key) == 1) {
+                    index += 1;
+                    break;
+                }
+                // nodesAtHighestLevel.get(index).getNumID() < key
+                if (list.get(index).getNumID().compareTo(key) == -1) {
+                    indexTemp = index;
+                    index = (int) (index + var/2);
+                    var = (int) var/2;
+                    continue;
+                }
+                // nodesAtHighestLevel.get(index).getNumID() > key
+                if (list.get(index).getNumID().compareTo(key) == 1) {
+                    indexTemp = index;
+                    index = (int) (index - var/2);
+                    var = (int) var/2;
+                    continue;
                 }
             }
-            //minNodeIdentity.getNumID() > resourceKey
-            if (minNodeIdentity.getNumID().compareTo(new BigInteger(resourceKey, 16)) == 1) {
-                minDiffNodeIdentity = minNodeIdentity;
+            if (index > 0) {
+                index-=1;
+            }
+            if (index >= 0) {
+                minDiffNodeIdentity = list.get(index);
             }
 
             logger.debug("Minimum different Node Num ID: " + minDiffNodeIdentity.getNumID().toString(16) + " Name ID: " + minDiffNodeIdentity.getNameID());

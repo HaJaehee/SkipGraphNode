@@ -185,7 +185,7 @@ public final class DHTManager {
         }
 
         this.IPADDR = ip;
-        System.out.println("IP Addr: "+this.IPADDR);
+
 
         kvMap = new HashMap<String, String>();
         EventLoopGroup groupClient = new NioEventLoopGroup();
@@ -209,7 +209,7 @@ public final class DHTManager {
                 localityID = args[1];
                 if (localityID.equals("none"))
                     localityID = null;
-
+                System.out.println("IP Addr: "+this.IPADDR);
                 skipGraphServer = new DHTServer(ip, DEFAULT_DHT_PORT+(edgeNum*100)+dhtNum, localityID, kvMap,
                         logging, logFileOut, edgeNum, dhtNum, bClient);
                 System.out.println("Insertion is done.");
@@ -235,6 +235,7 @@ public final class DHTManager {
                 //The others node constructor requires the introducer's IP address, port number, and its eth0 IP address, port number, and Locality ID.
                 //Also, the others node constructor requires STATIC key-value Map object.
                 //TODO
+
                 String introducerIP = args[3];
                 int introducerPort = Integer.parseInt(args[4]);
                 edgeNum = Integer.parseInt(args[0]);
@@ -242,6 +243,7 @@ public final class DHTManager {
                 localityID = args[1];
                 if (localityID.equals("none"))
                     localityID = null;
+                System.out.println("IP Addr: "+this.IPADDR);
                 skipGraphServer = new DHTServer(introducerIP, introducerPort, ip, DEFAULT_DHT_PORT+(100*edgeNum)+dhtNum,
                         localityID, kvMap, logging, logFileOut, edgeNum, dhtNum, bClient);
                 System.out.println("Bootstrap is done.");
